@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="it"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Ludo Trainer">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0b0f1a">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<title>Ludo Trainer</title>
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;background:#0b0f1a;color:#f1f5f9;font-family:-apple-system,system-ui,sans-serif}
+body{padding:calc(env(safe-area-inset-top) + 14px) 16px calc(env(safe-area-inset-bottom) + 24px);max-width:560px;margin:0 auto}
+h1{font-size:22px;margin:0 0 14px}h2{font-size:15px;color:#94a3b8;margin:22px 0 8px;text-transform:uppercase;letter-spacing:.05em}
+.card{background:#151b2b;border-radius:14px;padding:14px}
+.row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:8px 0}
+label{font-size:15px}
+input,select{font-size:17px;background:#0b0f1a;color:#f1f5f9;border:1px solid #2a3350;border-radius:10px;padding:8px 10px}
+input[type=number]{width:84px;text-align:center}
+button{font-size:17px;border:0;border-radius:12px;padding:14px;background:#2dd4bf;color:#06201c;font-weight:700;width:100%}
+button.sec{background:#26304a;color:#f1f5f9}button.red{background:#f87171;color:#2b0a0a}
+button.sm{width:auto;padding:8px 12px;font-size:15px}
+.mv{display:flex;gap:8px;align-items:center;margin:6px 0}.mv span{flex:1;font-size:16px}.mv select{max-width:140px;font-size:14px}
+.add{display:flex;gap:8px;margin-top:10px}.add input{flex:1;min-width:0}
+#train{display:none;text-align:center}
+#name{font-size:38px;font-weight:800;min-height:100px;display:flex;align-items:center;justify-content:center;line-height:1.1;margin:10px 0}
+#arrow{font-size:80px;line-height:1}#dirtxt{color:#94a3b8;min-height:22px}
+#time{font-size:44px;font-variant-numeric:tabular-nums;margin:10px 0}
+#stats{color:#94a3b8;margin-bottom:10px}canvas{background:#151b2b;border-radius:50%;margin:10px 0}
+.hint{font-size:13px;color:#94a3b8;line-height:1.4}
+</style></head><body>
+<div id="setup">
+<h1>Ludo Trainer</h1>
+<div class="card">
+<div class="row"><label>Durata totale (minuti)</label><input id="dur" type="number" min="1" value="10"></div>
+<div class="row"><label>Intervallo minimo (sec)</label><input id="mn" type="number" min="2" value="4"></div>
+<div class="row"><label>Intervallo massimo (sec)</label><input id="mx" type="number" min="2" value="8"></div>
+<div class="row"><label>Diametro spazio (passi)</label><input id="dia" type="number" min="4" value="8"></div>
+<div class="row"><label>Velocità voce</label><input id="rate" type="range" min="0.7" max="1.4" step="0.05" value="1"></div>
+<div class="row"><label>Dì anche la direzione</label><input id="sayDir" type="checkbox"></div>
+<p class="hint" id="warn"></p>
+</div>
+<div style="margin-top:14px"><button id="go">Avvia allenamento</button></div>
+<h2>Movimenti</h2>
+<div class="card"><div id="list"></div>
+<div class="add"><input id="newName" placeholder="Nuovo movimento"><select id="newDir"></select><button class="sm" id="addBtn">+</button></div>
+<div style="margin-top:12px"><button class="sec" id="reset">Ripristina elenco iniziale</button></div></div>
+<p class="hint">Il passo è un'unità: il diametro indica quanti passi puoi fare al massimo da un lato all'altro. Parti dal centro dello spazio.</p>
+</div>
+
+<div id="train">
+<div id="stats"></div>
+<div id="arrow"></div><div id="dirtxt"></div>
+<div id="name">Pronti…</div>
+<div id="time"></div>
+<canvas id="cv" width="220" height="220"></canvas>
+<div class="row"><button class="sec" id="pause">Pausa</button><button class="red" id="stop">Stop</button></div>
+</div>
+
+<script>
+const DIRS={"avanti":[0,1,"↑"],"indietro":[0,-1,"↓"],"destra":[1,0,"→"],"sinistra":[-1,0,"←"],"avanti destra":[1,1,"↗"],"avanti sinistra":[-1,1,"↖"],"indietro destra":[1,-1,"↘"],"indietro sinistra":[-1,-1,"↙"],"nessuno":[0,0,"●"]};
+const d=(n,r)=>({n,d:r});
+const DEFAULT=[d("Fendente","avanti"),d("Montante","avanti"),d("Rovescio","avanti"),d("Laterale Destro","avanti destra"),d("Laterale Sinistro","avanti sinistra"),d("Diagonale Destro","avanti destra"),d("Diagonale Sinistro","avanti sinistra"),d("Ana Destro","avanti destra"),d("Ana Sinistro","avanti sinistra"),d("Levante Destro","avanti destra"),d("Levante Sinistro","avanti sinistra"),
+d("Prima","indietro"),d("Seconda","indietro"),d("Terza","indietro"),d("Quarta","indietro"),d("Quinta","indietro"),d("Sesta","indietro"),
+d("Prima Avanzata","indietro"),d("Seconda Avanzata","indietro"),d("Terza Avanzata","indietro"),d("Quarta Avanzata","indietro"),d("Quinta Avanzata","indietro"),d("Sesta Avanzata","indietro"),
+d("Terza d'Incontro","avanti destra"),d("Quarta d'Incontro","avanti sinistra"),d("Quinta d'Incontro","avanti destra"),d("Sesta d'Incontro","avanti sinistra"),
+d("Guardia di F1","nessuno"),d("Guardia di F2","nessuno")];
+const $=id=>document.getElementById(id);
+let moves,run=null,timer=null,wake=null,voice=null;
+try{moves=JSON.parse(localStorage.getItem("lt_moves"))}catch(e){}
+if(!Array.isArray(moves)||!moves.length)moves=JSON.parse(JSON.stringify(DEFAULT));
+const FIELDS=["dur","mn","mx","dia","rate"];
+try{const c=JSON.parse(localStorage.getItem("lt_cfg")||"{}");FIELDS.forEach(f=>{if(c[f])$(f).value=c[f]});$("sayDir").checked=!!c.sayDir}catch(e){}
+function saveMoves(){try{localStorage.setItem("lt_moves",JSON.stringify(moves))}catch(e){}}
+function saveCfg(){try{const c={sayDir:$("sayDir").checked};FIELDS.forEach(f=>c[f]=$(f).value);localStorage.setItem("lt_cfg",JSON.stringify(c))}catch(e){}}
+const dirOpts=Object.keys(DIRS).map(k=>`<option>${k}</option>`).join("");
+$("newDir").innerHTML=dirOpts;
+function render(){
+ $("list").innerHTML="";
+ moves.forEach((m,i)=>{const r=document.createElement("div");r.className="mv";
+  r.innerHTML=`<span></span><select>${dirOpts}</select><button class="sm sec">✕</button>`;
+  r.querySelector("span").textContent=m.n;const s=r.querySelector("select");s.value=m.d;
+  s.onchange=()=>{m.d=s.value;saveMoves()};
+  r.querySelector("button").onclick=()=>{moves.splice(i,1);saveMoves();render()};
+  $("list").appendChild(r)});
+ check()}
+function check(){
+ const n=moves.length,avg=(+$("mn").value+ +$("mx").value)/2,calls=Math.floor($("dur").value*60/avg);
+ $("warn").textContent=calls<n?`Attenzione: con questi tempi vengono chiamati circa ${calls} movimenti su ${n}. Se non sono tutti usciti, l'app prosegue finché non sono stati chiamati tutti.`:`Circa ${calls} comandi in totale per ${n} movimenti.`}
+FIELDS.forEach(f=>$(f).addEventListener("input",()=>{check();saveCfg()}));$("sayDir").onchange=saveCfg;
+$("addBtn").onclick=()=>{const v=$("newName").value.trim();if(!v)return;moves.push({n:v,d:$("newDir").value});$("newName").value="";saveMoves();render()};
+$("reset").onclick=()=>{if(confirm("Ripristinare l'elenco iniziale? Le modifiche andranno perse.")){moves=JSON.parse(JSON.stringify(DEFAULT));saveMoves();render()}};
+
+function pickVoice(){const v=speechSynthesis.getVoices().filter(x=>x.lang&&x.lang.toLowerCase().startsWith("it"));voice=v.find(x=>/premium|enhanced|migliorata/i.test(x.name))||v[0]||null}
+if("speechSynthesis"in window){pickVoice();speechSynthesis.onvoiceschanged=pickVoice}
+function say(t){if(!("speechSynthesis"in window))return;
+ t=t.replace(/\bF1\b/g,"effe uno").replace(/\bF2\b/g,"effe due");
+ speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);u.lang="it-IT";if(voice)u.voice=voice;u.rate=+$("rate").value;speechSynthesis.speak(u)}
+async function lock(){try{if(navigator.wakeLock)wake=await navigator.wakeLock.request("screen")}catch(e){}}
+document.addEventListener("visibilitychange",()=>{if(run&&document.visibilityState==="visible")lock()});
+
+const rnd=(a,b)=>a+Math.random()*(b-a);
+function start(){
+ const c={dur:+$("dur").value,mn:+$("mn").value,mx:+$("mx").value,dia:+$("dia").value};
+ if(!(c.dur>0)||!(c.mn>=2)||c.mx<c.mn||!(c.dia>=4)){alert("Controlla i valori: durata > 0, intervallo minimo ≥ 2 sec, massimo ≥ minimo, diametro ≥ 4 passi.");return}
+ if(!moves.length){alert("Aggiungi almeno un movimento.");return}
+ saveCfg();
+ run={c,pos:[0,0],seen:new Set(),last:-1,count:0,paused:false,pausedAt:0,endAt:Date.now()+5000+c.dur*60000,next:Date.now()+5000};
+ $("setup").style.display="none";$("train").style.display="block";$("pause").textContent="Pausa";
+ $("name").textContent="Pronti…";$("arrow").textContent="";$("dirtxt").textContent="";
+ say("Pronti");lock();draw();timer=setInterval(tick,200)}
+function pick(){
+ const R=run.c.dia/2,R2=R*R,[x,y]=run.pos,d0=Math.hypot(x,y),cand=[];
+ moves.forEach((m,i)=>{const v=DIRS[m.d]||[0,0],nx=x+v[0],ny=y+v[1];if(nx*nx+ny*ny<=R2+1e-9)cand.push({i,nx,ny,dd:Math.hypot(nx,ny)})});
+ const unseen=cand.filter(c=>!run.seen.has(c.i)),left=moves.length-run.seen.size;
+ const slots=Math.max(0,(run.endAt-Date.now())/(((run.c.mn+run.c.mx)/2)*1000));
+ let pool=cand;if(unseen.length&&(left>=slots||Date.now()>run.endAt))pool=unseen;
+ const w=pool.map(c=>(run.seen.has(c.i)?1:5)*(c.i===run.last?.2:1)*Math.max(.3,1+(d0-c.dd)*.5));
+ let r=Math.random()*w.reduce((a,b)=>a+b,0),k=0;while(k<pool.length-1&&(r-=w[k])>0)k++;
+ return pool[k]}
+function call(){
+ const p=pick(),m=moves[p.i],v=DIRS[m.d]||DIRS.nessuno;
+ run.pos=[p.nx,p.ny];run.seen.add(p.i);run.last=p.i;run.count++;
+ run.next=Date.now()+rnd(run.c.mn,run.c.mx)*1000;
+ $("name").textContent=m.n;$("arrow").textContent=v[2];$("dirtxt").textContent=m.d==="nessuno"?"nessun passo":"passo: "+m.d;
+ say($("sayDir").checked&&m.d!=="nessuno"?m.n+", "+m.d:m.n);draw()}
+function tick(){
+ if(!run||run.paused)return;
+ const now=Date.now(),rem=run.endAt-now,done=run.seen.size>=moves.length;
+ if(rem<=0&&done){finish();return}
+ if(rem>0){const s=Math.ceil(rem/1000);$("time").textContent=String(Math.floor(s/60)).padStart(2,"0")+":"+String(s%60).padStart(2,"0")}
+ else $("time").textContent="recupero";
+ $("stats").textContent=`Comandi: ${run.count} · Movimenti chiamati: ${run.seen.size}/${moves.length}`;
+ if(now>=run.next)call()}
+function finish(){clearInterval(timer);say("Allenamento terminato");$("name").textContent="Fine!";$("arrow").textContent="";$("dirtxt").textContent="";$("time").textContent="";if(wake){wake.release();wake=null}run.paused=true}
+function stop(){clearInterval(timer);speechSynthesis.cancel();if(wake){wake.release();wake=null}run=null;$("train").style.display="none";$("setup").style.display="block"}
+$("go").onclick=start;$("stop").onclick=stop;
+$("pause").onclick=()=>{if(!run)return;
+ if(run.paused){const dt=Date.now()-run.pausedAt;run.endAt+=dt;run.next+=dt;run.paused=false;$("pause").textContent="Pausa";lock()}
+ else{run.paused=true;run.pausedAt=Date.now();speechSynthesis.cancel();$("pause").textContent="Riprendi"}};
+function draw(){
+ const c=$("cv"),g=c.getContext("2d"),S=220,R=run.c.dia/2,sc=(S/2-14)/R;
+ g.clearRect(0,0,S,S);g.strokeStyle="#2a3350";g.lineWidth=2;g.beginPath();g.arc(S/2,S/2,R*sc,0,7);g.stroke();
+ g.beginPath();g.moveTo(S/2,14);g.lineTo(S/2,S-14);g.moveTo(14,S/2);g.lineTo(S-14,S/2);g.stroke();
+ g.fillStyle="#2dd4bf";g.beginPath();g.arc(S/2+run.pos[0]*sc,S/2-run.pos[1]*sc,8,0,7);g.fill();
+ g.fillStyle="#94a3b8";g.font="12px sans-serif";g.fillText("avanti",S/2-16,12)}
+render();
+if("serviceWorker"in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});
+</script></body></html>
