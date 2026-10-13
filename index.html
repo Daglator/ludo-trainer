@@ -44,11 +44,11 @@ summary{font-size:18px;padding:10px 0;cursor:pointer}.cnt{color:#94a3b8;font-siz
 <h1>Ludo Trainer</h1>
 <div class="card">
 <div class="row"><label>Durata totale (minuti)</label><input id="dur" type="number" min="1" step="any" inputmode="decimal" value="10"></div>
-<div class="row"><label>Intervallo minimo (sec)</label><input id="mn" type="number" min="1" step="0.1" inputmode="decimal" value="4"></div>
-<div class="row"><label>Intervallo massimo (sec)</label><input id="mx" type="number" min="1" step="0.1" inputmode="decimal" value="8"></div>
+<div class="row"><label>Intervallo minimo (sec)</label><input id="mn" type="number" min="1" step="0.1" inputmode="decimal" value="2"></div>
+<div class="row"><label>Intervallo massimo (sec)</label><input id="mx" type="number" min="1" step="0.1" inputmode="decimal" value="4"></div>
 <div class="row"><label>Diametro spazio (passi)</label><input id="dia" type="number" min="4" step="1" inputmode="numeric" value="8"></div>
+<div class="row"><label>Ripetizioni consecutive max</label><input id="rep" type="number" min="1" step="1" inputmode="numeric" value="1"></div>
 <div class="row"><label>Velocità voce</label><input id="rate" type="range" min="0.7" max="1.4" step="0.05" value="1"></div>
-<div class="row"><label>Dì anche la direzione</label><input id="sayDir" type="checkbox"></div>
 <div class="row"><label>Guardia iniziale</label><select id="gs"></select></div>
 <div class="row"><label>Guardia finale</label><select id="ge"></select></div>
 <p class="hint" id="warn"></p>
@@ -101,9 +101,9 @@ DEFAULT.forEach(b=>{if(!seen.includes(b.id)&&!moves.some(m=>m.id===b.id||(m.n===
 seen=[...new Set([...seen,...DEFAULT.map(x=>x.id)])];
 const sel=new Set(Array.isArray(selArr)?selArr:moves.map(m=>m.id));
 const saveMoves=()=>{W("lt_moves3",moves);W("lt_base3",seen)},saveSel=()=>W("lt_sel3",[...sel]);saveMoves();saveSel();
-const FIELDS=["dur","mn","mx","dia","rate"];let cfgG={gs:"",ge:""};
-try{const c=J("lt_cfg")||{};FIELDS.forEach(f=>{if(c[f])$(f).value=c[f]});$("sayDir").checked=!!c.sayDir;cfgG={gs:c.gs||"",ge:c.ge||""}}catch(e){}
-function saveCfg(){const c={sayDir:$("sayDir").checked,gs:$("gs").value,ge:$("ge").value};FIELDS.forEach(f=>c[f]=$(f).value);W("lt_cfg",c)}
+const FIELDS=["dur","mn","mx","dia","rep","rate"];let cfgG={gs:"",ge:""};
+try{const c=J("lt_cfg")||{};FIELDS.forEach(f=>{if(c[f])$(f).value=c[f]});cfgG={gs:c.gs||"",ge:c.ge||""}}catch(e){}
+function saveCfg(){const c={gs:$("gs").value,ge:$("ge").value};FIELDS.forEach(f=>c[f]=$(f).value);W("lt_cfg",c)}
 const opts=(l,b)=>`<option value="">${b}</option>`+l.map(k=>`<option>${k}</option>`).join("");
 const fo=opts(FORMS,"Forma"),to=opts(TYPES,"Tipo"),dO=Object.keys(DIRS).map(k=>`<option>${k}</option>`).join("");
 $("newF").innerHTML=fo;$("newT").innerHTML=to;$("newD").innerHTML=dO;
@@ -150,8 +150,8 @@ function guards(){const gs=getPool().map(i=>moves[i]).filter(m=>m.t==="guardia")
   s.value=gs.some(m=>m.id===cur)?cur:""})}
 function check(){
  const n=getPool().length,avg=(+$("mn").value+ +$("mx").value)/2,calls=Math.floor($("dur").value*60/avg);
- $("warn").textContent=n===0?"Seleziona almeno una tecnica.":calls<n?`Attenzione: con questi tempi vengono chiamate circa ${calls} tecniche su ${n}. Se non sono tutte uscite, l'app prosegue finché non sono state chiamate tutte.`:`Tecniche selezionate: ${n}. Circa ${calls} comandi in totale.`}
-FIELDS.forEach(f=>$(f).addEventListener("input",()=>{check();saveCfg()}));["sayDir","gs","ge"].forEach(i=>$(i).onchange=saveCfg);
+ $("warn").textContent=n===0?"Seleziona almeno una tecnica.":calls<n?`Attenzione: con questi tempi verranno chiamati circa ${calls} comandi per ${n} tecniche selezionate: non tutte potrebbero uscire.`:`Tecniche selezionate: ${n}. Circa ${calls} comandi in totale.`}
+FIELDS.forEach(f=>$(f).addEventListener("input",()=>{check();saveCfg()}));["gs","ge"].forEach(i=>$(i).onchange=saveCfg);
 $("all").onclick=()=>{moves.forEach(m=>sel.add(m.id));saveSel();refresh()};
 $("none").onclick=()=>{sel.clear();saveSel();refresh()};
 $("addBtn").onclick=()=>{const v=$("newName").value.trim();if(!v)return;const m={id:uid(),n:v,f:$("newF").value,t:$("newT").value,d:$("newD").value};moves.push(m);sel.add(m.id);if(m.f)open.add(m.f);$("newName").value="";saveMoves();saveSel();render()};
@@ -162,6 +162,7 @@ if("speechSynthesis"in window){pickVoice();speechSynthesis.onvoiceschanged=pickV
 function say(t){if(!("speechSynthesis"in window))return;
  t=t.replace(/\bF([1-7])\b/g,(a,n)=>"effe "+["","uno","due","tre","quattro","cinque","sei","sette"][n]);
  speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);u.lang="it-IT";if(voice)u.voice=voice;u.rate=+$("rate").value;speechSynthesis.speak(u)}
+function sayMany(a){if(!("speechSynthesis"in window))return;speechSynthesis.cancel();setTimeout(()=>a.forEach(t=>{const u=new SpeechSynthesisUtterance(t);u.lang="it-IT";if(voice)u.voice=voice;u.rate=+$("rate").value;speechSynthesis.speak(u)}),150)}
 async function lock(){try{if(navigator.wakeLock)wake=await navigator.wakeLock.request("screen")}catch(e){}}
 document.addEventListener("visibilitychange",()=>{if(run&&document.visibilityState==="visible")lock()});
 
@@ -173,11 +174,11 @@ function guardIdx(name,pool){const all=moves.map((m,i)=>i).filter(i=>moves[i].t=
  if(!g.length)g=all;return g[Math.floor(Math.random()*g.length)]}
 function gp(i){const v=DIRS[moves[i].d]||[0,0];return{i,nx:run.pos[0]+v[0],ny:run.pos[1]+v[1]}}
 function start(){
- const c={dur:+$("dur").value,mn:+$("mn").value,mx:+$("mx").value,dia:+$("dia").value};
+ const c={dur:+$("dur").value,mn:+$("mn").value,mx:+$("mx").value,dia:+$("dia").value,rep:Math.max(1,Math.floor(+$("rep").value)||1)};
  if(!(c.dur>0)||!(c.mn>=1)||c.mx<c.mn||!(c.dia>=4)){alert("Controlla i valori: durata > 0, intervallo minimo ≥ 1 sec, massimo ≥ minimo, diametro ≥ 4 passi.");return}
  const pool=getPool();if(!pool.length){alert("Seleziona almeno una tecnica.");return}
  saveCfg();
- run={c,pool,pos:[0,0],seen:new Set(),last:-1,count:0,paused:false,pausedAt:0,ending:false,endAt:Date.now()+5000+c.dur*60000,next:Date.now()+5000,sg:guardIdx($("gs").value,pool),eg:guardIdx($("ge").value,pool)};
+ run={c,pool,pos:[0,0],seen:new Set(),last:-1,count:0,paused:false,pausedAt:0,ending:false,rp:null,endAt:Date.now()+5000+c.dur*60000,next:Date.now()+5000,sg:guardIdx($("gs").value,pool),eg:guardIdx($("ge").value,pool)};
  run.first=run.sg>=0;
  {const cn={};moves.map((m,i)=>i).forEach(i=>{const k=moves[i].n.toLowerCase();cn[k]=(cn[k]||0)+1});run.dup=new Set(Object.keys(cn).filter(k=>cn[k]>1))}
  $("setup").style.display="none";$("train").style.display="block";$("pause").textContent="Pausa";
@@ -186,12 +187,19 @@ function start(){
 function pick(){
  const R=run.c.dia/2,R2=R*R,[x,y]=run.pos,d0=Math.hypot(x,y),cand=[];
  run.pool.forEach(i=>{const v=DIRS[moves[i].d]||[0,0],nx=x+v[0],ny=y+v[1];if(nx*nx+ny*ny<=R2+1e-9)cand.push({i,nx,ny,dd:Math.hypot(nx,ny)})});
- const unseen=cand.filter(c=>!run.seen.has(c.i)),left=run.pool.filter(i=>!run.seen.has(i)).length;
- const slots=Math.max(0,(run.endAt-Date.now())/(((run.c.mn+run.c.mx)/2)*1000));
- let pool=cand;if(unseen.length&&(left>=slots||Date.now()>run.endAt))pool=unseen;
- const w=pool.map(c=>(run.seen.has(c.i)?1:5)*(c.i===run.last?.2:1)*Math.max(.3,1+(d0-c.dd)*.5));
+ const mov=i=>{const v=DIRS[moves[i].d]||[0,0];return v[0]||v[1]};
+ if(run.pool.some(i=>mov(i))&&!cand.some(c=>mov(c.i)))return null;
+ let base=cand.filter(c=>c.i!==run.last);if(!base.length)base=cand;
+ const unseen=base.filter(c=>!run.seen.has(c.i)),left=run.pool.filter(i=>!run.seen.has(i)).length;
+ const slots=Math.max(0,(run.endAt-Date.now())/(((run.c.mn+run.c.mx)/2)*1000))/((1+run.c.rep)/2);
+ const pool=unseen.length&&left>=slots?unseen:base;
+ const w=pool.map(c=>(run.seen.has(c.i)?1:5)*Math.max(.3,1+(d0-c.dd)*.5));
  let r=Math.random()*w.reduce((a,b)=>a+b,0),k=0;while(k<pool.length-1&&(r-=w[k])>0)k++;
- return pool[k]}
+ const p=pool[k],m=moves[p.i],v=DIRS[m.d]||[0,0];
+ run.rp=null;
+ if(m.t!=="guardia"&&run.c.rep>1){let mk=1;while(mk<run.c.rep){const nx=x+v[0]*(mk+1),ny=y+v[1]*(mk+1);if(nx*nx+ny*ny<=R2+1e-9)mk++;else break}
+  const n=1+Math.floor(Math.random()*mk);if(n>1)run.rp={i:p.i,left:n-1}}
+ return p}
 function go(p){
  const m=moves[p.i],v=DIRS[m.d]||DIRS.nessuno;
  run.pos=[p.nx,p.ny];if(run.pool.includes(p.i))run.seen.add(p.i);run.last=p.i;run.count++;
@@ -199,16 +207,20 @@ function go(p){
  const sp=run.dup.has(m.n.toLowerCase())&&m.f?m.n+" di Forma "+m.f.replace(/\D/g,""):m.n;
  $("name").textContent=sp;$("arrow").textContent=v[2];
  $("dirtxt").textContent=[m.f?"Forma "+m.f.replace(/\D/g,""):"",m.t,m.d==="nessuno"?"nessun passo":"passo: "+m.d].filter(Boolean).join(" · ");
- say($("sayDir").checked&&m.d!=="nessuno"?sp+", "+m.d:sp);draw()}
+ say(sp);draw()}
 function tick(){
  if(!run||run.paused)return;
- const now=Date.now(),rem=run.endAt-now,done=run.pool.every(i=>run.seen.has(i));
+ const now=Date.now(),rem=run.endAt-now;
  $("stats").textContent=`Comandi: ${run.count} · Tecniche chiamate: ${run.pool.filter(i=>run.seen.has(i)).length}/${run.pool.length}`;
  if(run.ending){if(now>=run.next)finish();return}
- if(rem>0){const s=Math.ceil(rem/1000);$("time").textContent=String(Math.floor(s/60)).padStart(2,"0")+":"+String(s%60).padStart(2,"0")}else $("time").textContent="recupero";
- if(rem<=0&&done){if(run.eg>=0){run.ending=true;$("time").textContent="";go(gp(run.eg))}else finish();return}
- if(now>=run.next){if(run.first){run.first=false;go(gp(run.sg))}else go(pick())}}
-function finish(){clearInterval(timer);say("Allenamento terminato");$("name").textContent="Fine!";$("arrow").textContent="";$("dirtxt").textContent="";$("time").textContent="";if(wake){wake.release();wake=null}run.paused=true}
+ const s=Math.max(0,Math.ceil(rem/1000));$("time").textContent=String(Math.floor(s/60)).padStart(2,"0")+":"+String(s%60).padStart(2,"0");
+ if(rem<=0){if(now>=run.next){if(run.eg>=0){run.ending=true;$("time").textContent="";go(gp(run.eg))}else finish()}return}
+ if(now>=run.next){
+  if(run.first){run.first=false;go(gp(run.sg))}
+  else if(run.rp&&run.rp.left>0){run.rp.left--;go(gp(run.rp.i))}
+  else{const p=pick();if(p)go(p);else limit()}}}
+function limit(){clearInterval(timer);sayMany(["Limite area di allenamento raggiunto","Allenamento terminato"]);$("name").textContent="Limite area di allenamento raggiunto";$("arrow").textContent="";$("dirtxt").textContent="Allenamento terminato";$("time").textContent="";if(wake){wake.release();wake=null}run.paused=true}
+function finish(){clearInterval(timer);sayMany(["Allenamento terminato"]);$("name").textContent="Fine!";$("arrow").textContent="";$("dirtxt").textContent="";$("time").textContent="";if(wake){wake.release();wake=null}run.paused=true}
 function stop(){clearInterval(timer);speechSynthesis.cancel();if(wake){wake.release();wake=null}run=null;$("train").style.display="none";$("setup").style.display="block"}
 $("go").onclick=start;$("stop").onclick=stop;
 $("pause").onclick=()=>{if(!run)return;
