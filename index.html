@@ -143,7 +143,7 @@ function refresh(){
  guards();check()}
 function getPool(){return moves.map((m,i)=>i).filter(i=>sel.has(moves[i].id))}
 function guards(){const gs=getPool().map(i=>moves[i]).filter(m=>m.t==="guardia"),cn={};
- gs.forEach(m=>{const k=m.n.toLowerCase();cn[k]=(cn[k]||0)+1});
+ moves.forEach(m=>{const k=m.n.toLowerCase();cn[k]=(cn[k]||0)+1});
  [["gs",cfgG.gs],["ge",cfgG.ge]].forEach(([id,v])=>{const s=$(id),cur=s.options.length?s.value:v;
   s.innerHTML='<option value="">Casuale</option>';
   gs.forEach(m=>{const o=document.createElement("option");o.value=m.id;o.textContent=cn[m.n.toLowerCase()]>1&&m.f?m.n+" ("+m.f+")":m.n;s.appendChild(o)});
@@ -179,7 +179,7 @@ function start(){
  saveCfg();
  run={c,pool,pos:[0,0],seen:new Set(),last:-1,count:0,paused:false,pausedAt:0,ending:false,endAt:Date.now()+5000+c.dur*60000,next:Date.now()+5000,sg:guardIdx($("gs").value,pool),eg:guardIdx($("ge").value,pool)};
  run.first=run.sg>=0;
- {const cn={};[...pool,run.sg,run.eg].filter((v,i,a)=>v>=0&&a.indexOf(v)===i).forEach(i=>{const k=moves[i].n.toLowerCase();cn[k]=(cn[k]||0)+1});run.dup=new Set(Object.keys(cn).filter(k=>cn[k]>1))}
+ {const cn={};moves.map((m,i)=>i).forEach(i=>{const k=moves[i].n.toLowerCase();cn[k]=(cn[k]||0)+1});run.dup=new Set(Object.keys(cn).filter(k=>cn[k]>1))}
  $("setup").style.display="none";$("train").style.display="block";$("pause").textContent="Pausa";
  $("name").textContent="Pronti…";$("arrow").textContent="";$("dirtxt").textContent="";
  say("Pronti");lock();draw();timer=setInterval(tick,200)}
@@ -196,9 +196,9 @@ function go(p){
  const m=moves[p.i],v=DIRS[m.d]||DIRS.nessuno;
  run.pos=[p.nx,p.ny];if(run.pool.includes(p.i))run.seen.add(p.i);run.last=p.i;run.count++;
  run.next=Date.now()+rndT(run.c.mn,run.c.mx)*1000;
- $("name").textContent=m.n;$("arrow").textContent=v[2];
- $("dirtxt").textContent=[m.f,m.t,m.d==="nessuno"?"nessun passo":"passo: "+m.d].filter(Boolean).join(" · ");
  const sp=run.dup.has(m.n.toLowerCase())&&m.f?m.n+" di Forma "+m.f.replace(/\D/g,""):m.n;
+ $("name").textContent=sp;$("arrow").textContent=v[2];
+ $("dirtxt").textContent=[m.f?"Forma "+m.f.replace(/\D/g,""):"",m.t,m.d==="nessuno"?"nessun passo":"passo: "+m.d].filter(Boolean).join(" · ");
  say($("sayDir").checked&&m.d!=="nessuno"?sp+", "+m.d:sp);draw()}
 function tick(){
  if(!run||run.paused)return;
