@@ -165,7 +165,7 @@ if("speechSynthesis"in window){pickVoice();speechSynthesis.onvoiceschanged=pickV
 const NUM=["","uno","due","tre","quattro","cinque","sei","sette"];
 function say(t){if(!("speechSynthesis"in window))return;
  const hasF=/\bF[1-7]\b/.test(t);
- t=t.replace(/\bF([1-7])\b/g,(a,n)=>"èffe "+NUM[n]);
+ t=t.replace(/\bF([1-7])\b/g,(a,n)=>"èffe"+(n==="1"?", ":" ")+NUM[n]);
  speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);u.lang="it-IT";if(voice)u.voice=voice;u.rate=+$("rate").value*(hasF?.88:1);speechSynthesis.speak(u)}
 function sayMany(a){if(!("speechSynthesis"in window))return;speechSynthesis.cancel();setTimeout(()=>a.forEach(t=>{const u=new SpeechSynthesisUtterance(t);u.lang="it-IT";if(voice)u.voice=voice;u.rate=+$("rate").value;speechSynthesis.speak(u)}),150)}
 async function lock(){try{if(navigator.wakeLock)wake=await navigator.wakeLock.request("screen")}catch(e){}}
