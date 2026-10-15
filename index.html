@@ -47,7 +47,7 @@ summary{font-size:18px;padding:10px 0;cursor:pointer}.cnt{color:#94a3b8;font-siz
 <div class="row"><label>Intervallo minimo (sec)</label><input id="mn" type="number" min="1" step="0.1" inputmode="decimal" value="2"></div>
 <div class="row"><label>Intervallo massimo (sec)</label><input id="mx" type="number" min="1" step="0.1" inputmode="decimal" value="4"></div>
 <div class="row"><label>Diametro spazio (passi)</label><input id="dia" type="number" min="4" step="1" inputmode="numeric" value="8"></div>
-<div class="row"><label>Ripetizioni consecutive max</label><input id="rep" type="number" min="1" step="1" inputmode="numeric" value="1"></div>
+<div class="row"><label>Ripetizioni consecutive max (1-4)</label><input id="rep" type="number" min="1" max="4" step="1" inputmode="numeric" value="1"></div>
 <div class="row"><label>Velocità voce</label><input id="rate" type="range" min="0.7" max="1.4" step="0.05" value="1"></div>
 <div class="row"><label>Guardia iniziale</label><select id="gs"></select></div>
 <div class="row"><label>Guardia finale</label><select id="ge"></select></div>
@@ -159,9 +159,10 @@ $("reset").onclick=()=>{if(confirm("Ripristinare l'elenco iniziale? Le modifiche
 
 function pickVoice(){const v=speechSynthesis.getVoices().filter(x=>x.lang&&x.lang.toLowerCase().startsWith("it"));voice=v.find(x=>/premium|enhanced|migliorata/i.test(x.name))||v[0]||null}
 if("speechSynthesis"in window){pickVoice();speechSynthesis.onvoiceschanged=pickVoice}
+const NUM=["","uno","due","tre","quattro","cinque","sei","sette"];
 function say(t){if(!("speechSynthesis"in window))return;
- t=t.replace(/\bF([1-7])\b/g,(a,n)=>"effe "+["","uno","due","tre","quattro","cinque","sei","sette"][n]);
- speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);u.lang="it-IT";if(voice)u.voice=voice;u.rate=+$("rate").value;speechSynthesis.speak(u)}
+ speechSynthesis.cancel();
+ t.split(/(\bF[1-7]\b)/).filter(Boolean).forEach(p=>{const f=/^F[1-7]$/.test(p),u=new SpeechSynthesisUtterance(f?"èffe "+NUM[p[1]]:p);u.lang="it-IT";if(voice)u.voice=voice;u.rate=+$("rate").value*(f?.8:1);speechSynthesis.speak(u)})}
 function sayMany(a){if(!("speechSynthesis"in window))return;speechSynthesis.cancel();setTimeout(()=>a.forEach(t=>{const u=new SpeechSynthesisUtterance(t);u.lang="it-IT";if(voice)u.voice=voice;u.rate=+$("rate").value;speechSynthesis.speak(u)}),150)}
 async function lock(){try{if(navigator.wakeLock)wake=await navigator.wakeLock.request("screen")}catch(e){}}
 document.addEventListener("visibilitychange",()=>{if(run&&document.visibilityState==="visible")lock()});
@@ -174,12 +175,13 @@ function guardIdx(name,pool){const all=moves.map((m,i)=>i).filter(i=>moves[i].t=
  if(!g.length)g=all;return g[Math.floor(Math.random()*g.length)]}
 function gp(i){const v=DIRS[moves[i].d]||[0,0];return{i,nx:run.pos[0]+v[0],ny:run.pos[1]+v[1]}}
 function start(){
- const c={dur:+$("dur").value,mn:+$("mn").value,mx:+$("mx").value,dia:+$("dia").value,rep:Math.max(1,Math.floor(+$("rep").value)||1)};
+ const c={dur:+$("dur").value,mn:+$("mn").value,mx:+$("mx").value,dia:+$("dia").value,rep:Math.min(4,Math.max(1,Math.floor(+$("rep").value)||1))};$("rep").value=c.rep;
  if(!(c.dur>0)||!(c.mn>=1)||c.mx<c.mn||!(c.dia>=4)){alert("Controlla i valori: durata > 0, intervallo minimo ≥ 1 sec, massimo ≥ minimo, diametro ≥ 4 passi.");return}
  const pool=getPool();if(!pool.length){alert("Seleziona almeno una tecnica.");return}
  saveCfg();
  run={c,pool,pos:[0,0],seen:new Set(),last:-1,count:0,paused:false,pausedAt:0,ending:false,rp:null,endAt:Date.now()+5000+c.dur*60000,next:Date.now()+5000,sg:guardIdx($("gs").value,pool),eg:guardIdx($("ge").value,pool)};
- run.first=run.sg>=0;
+ run.first=run.sg>=0;run.pickN=0;run.repAt=new Set();
+ {const Y=c.rep,X=Math.max(1,Math.floor(c.dur*60/((c.mn+c.mx)/2)));if(Y>=2){const R=Math.min(X,1+Math.floor(Math.random()*Math.ceil(X/Y/10)));while(run.repAt.size<R)run.repAt.add(1+Math.floor(Math.random()*X))}}
  {const cn={};moves.map((m,i)=>i).forEach(i=>{const k=moves[i].n.toLowerCase();cn[k]=(cn[k]||0)+1});run.dup=new Set(Object.keys(cn).filter(k=>cn[k]>1))}
  $("setup").style.display="none";$("train").style.display="block";$("pause").textContent="Pausa";
  $("name").textContent="Pronti…";$("arrow").textContent="";$("dirtxt").textContent="";
@@ -189,16 +191,18 @@ function pick(){
  run.pool.forEach(i=>{const v=DIRS[moves[i].d]||[0,0],nx=x+v[0],ny=y+v[1];if(nx*nx+ny*ny<=R2+1e-9)cand.push({i,nx,ny,dd:Math.hypot(nx,ny)})});
  const mov=i=>{const v=DIRS[moves[i].d]||[0,0];return v[0]||v[1]};
  if(run.pool.some(i=>mov(i))&&!cand.some(c=>mov(c.i)))return null;
+ run.pickN++;
  let base=cand.filter(c=>c.i!==run.last);if(!base.length)base=cand;
+ const room=c=>{const v=DIRS[moves[c.i].d]||[0,0];let k=1;while(k<run.c.rep){const nx=x+v[0]*(k+1),ny=y+v[1]*(k+1);if(nx*nx+ny*ny<=R2+1e-9)k++;else break}return k};
+ let rpt=run.repAt.has(run.pickN);
+ if(rpt){const b2=base.filter(c=>moves[c.i].t!=="guardia"&&room(c)>=2);if(b2.length)base=b2;else{rpt=false;run.repAt.add(run.pickN+1)}}
  const unseen=base.filter(c=>!run.seen.has(c.i)),left=run.pool.filter(i=>!run.seen.has(i)).length;
- const slots=Math.max(0,(run.endAt-Date.now())/(((run.c.mn+run.c.mx)/2)*1000))/((1+run.c.rep)/2);
+ const slots=Math.max(0,(run.endAt-Date.now())/(((run.c.mn+run.c.mx)/2)*1000));
  const pool=unseen.length&&left>=slots?unseen:base;
  const w=pool.map(c=>(run.seen.has(c.i)?1:5)*Math.max(.3,1+(d0-c.dd)*.5));
  let r=Math.random()*w.reduce((a,b)=>a+b,0),k=0;while(k<pool.length-1&&(r-=w[k])>0)k++;
- const p=pool[k],m=moves[p.i],v=DIRS[m.d]||[0,0];
- run.rp=null;
- if(m.t!=="guardia"&&run.c.rep>1){let mk=1;while(mk<run.c.rep){const nx=x+v[0]*(mk+1),ny=y+v[1]*(mk+1);if(nx*nx+ny*ny<=R2+1e-9)mk++;else break}
-  const n=1+Math.floor(Math.random()*mk);if(n>1)run.rp={i:p.i,left:n-1}}
+ const p=pool[k];run.rp=null;
+ if(rpt){const mk=room(p),n=2+Math.floor(Math.random()*(mk-1));run.rp={i:p.i,left:n-1}}
  return p}
 function go(p){
  const m=moves[p.i],v=DIRS[m.d]||DIRS.nessuno;
