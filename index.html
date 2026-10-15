@@ -151,7 +151,10 @@ function guards(){const gs=getPool().map(i=>moves[i]).filter(m=>m.t==="guardia")
 function check(){
  const n=getPool().length,avg=(+$("mn").value+ +$("mx").value)/2,calls=Math.floor($("dur").value*60/avg);
  $("warn").textContent=n===0?"Seleziona almeno una tecnica.":calls<n?`Attenzione: con questi tempi verranno chiamati circa ${calls} comandi per ${n} tecniche selezionate: non tutte potrebbero uscire.`:`Tecniche selezionate: ${n}. Circa ${calls} comandi in totale.`}
-FIELDS.forEach(f=>$(f).addEventListener("input",()=>{check();saveCfg()}));["gs","ge"].forEach(i=>$(i).onchange=saveCfg);
+FIELDS.forEach(f=>$(f).addEventListener("input",()=>{check();saveCfg()}));
+const clampRep=()=>{let n=Math.floor(+$("rep").value);if(!(n>=1))n=1;if(n>4)n=4;$("rep").value=n};
+$("rep").addEventListener("input",()=>{const v=$("rep").value;if(v!==""&&+v>4)$("rep").value=4;});
+$("rep").addEventListener("change",()=>{clampRep();check();saveCfg()});clampRep();["gs","ge"].forEach(i=>$(i).onchange=saveCfg);
 $("all").onclick=()=>{moves.forEach(m=>sel.add(m.id));saveSel();refresh()};
 $("none").onclick=()=>{sel.clear();saveSel();refresh()};
 $("addBtn").onclick=()=>{const v=$("newName").value.trim();if(!v)return;const m={id:uid(),n:v,f:$("newF").value,t:$("newT").value,d:$("newD").value};moves.push(m);sel.add(m.id);if(m.f)open.add(m.f);$("newName").value="";saveMoves();saveSel();render()};
