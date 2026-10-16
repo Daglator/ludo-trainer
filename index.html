@@ -49,6 +49,7 @@ summary{font-size:18px;padding:10px 0;cursor:pointer}.cnt{color:#94a3b8;font-siz
 <div class="row"><label>Diametro spazio (passi)</label><input id="dia" type="number" min="4" step="1" inputmode="numeric" value="8"></div>
 <div class="row"><label>Ripetizioni consecutive max (1-4)</label><input id="rep" type="number" min="1" max="4" step="1" inputmode="numeric" value="1"></div>
 <div class="row"><label>Velocità voce</label><input id="rate" type="range" min="0.7" max="1.4" step="0.05" value="1"></div>
+<div class="row"><label>DanZan Mode</label><input id="dz" type="checkbox"></div>
 <div class="row"><label>Guardia iniziale</label><select id="gs"></select></div>
 <div class="row"><label>Guardia finale</label><select id="ge"></select></div>
 <p class="hint" id="warn"></p>
@@ -73,7 +74,7 @@ summary{font-size:18px;padding:10px 0;cursor:pointer}.cnt{color:#94a3b8;font-siz
 <div id="train">
 <div id="stats"></div>
 <div id="arrow"></div><div id="dirtxt"></div>
-<div id="name">Pronti…</div>
+<div id="name">Prendere posizione</div>
 <div id="time"></div>
 <canvas id="cv" width="220" height="220"></canvas>
 <div class="row"><button class="sec" id="pause">Pausa</button><button class="red" id="stop">Stop</button></div>
@@ -102,8 +103,8 @@ seen=[...new Set([...seen,...DEFAULT.map(x=>x.id)])];
 const sel=new Set(Array.isArray(selArr)?selArr:moves.map(m=>m.id));
 const saveMoves=()=>{W("lt_moves3",moves);W("lt_base3",seen)},saveSel=()=>W("lt_sel3",[...sel]);saveMoves();saveSel();
 const FIELDS=["dur","mn","mx","dia","rep","rate"];let cfgG={gs:"",ge:""};
-try{const c=J("lt_cfg")||{};FIELDS.forEach(f=>{if(c[f])$(f).value=c[f]});cfgG={gs:c.gs||"",ge:c.ge||""}}catch(e){}
-function saveCfg(){const c={gs:$("gs").value,ge:$("ge").value};FIELDS.forEach(f=>c[f]=$(f).value);W("lt_cfg",c)}
+try{const c=J("lt_cfg")||{};FIELDS.forEach(f=>{if(c[f])$(f).value=c[f]});cfgG={gs:c.gs||"",ge:c.ge||""};$("dz").checked=!!c.dz}catch(e){}
+function saveCfg(){const c={gs:$("gs").value,ge:$("ge").value,dz:$("dz").checked};FIELDS.forEach(f=>c[f]=$(f).value);W("lt_cfg",c)}
 const opts=(l,b)=>`<option value="">${b}</option>`+l.map(k=>`<option>${k}</option>`).join("");
 const fo=opts(FORMS,"Forma"),to=opts(TYPES,"Tipo"),dO=Object.keys(DIRS).map(k=>`<option>${k}</option>`).join("");
 $("newF").innerHTML=fo;$("newT").innerHTML=to;$("newD").innerHTML=dO;
@@ -111,7 +112,7 @@ const open=new Set(["F1"]);
 const idsOf=(f,t)=>moves.filter(m=>(m.f||"")===f&&(t===undefined||(m.t||"")===t));
 function rowEl(m){
  const r=document.createElement("div");r.className="mv";
- r.innerHTML=`<div class="top"><label class="ck"><input type="checkbox" data-id=""><span></span></label><button class="sm sec">⋯</button></div><div class="hint"></div><div class="edit" hidden><input class="n"><div class="sels"><select class="f">${fo}</select><select class="t">${to}</select><select class="d">${dO}</select></div><button class="sm red del">Elimina tecnica</button></div>`;
+ r.innerHTML=`<div class="top"><label class="ck"><input type="checkbox" data-id=""><span></span></label><button class="sm sec">⋯</button></div><div class="hint"></div><div class="edit" hidden><input class="n"><div class="sels"><select class="f">${fo}</select><select class="t">${to}</select><select class="d">${dO}</select></div><div class="sels"><select class="g"><option value="">Genere: automatico</option><option value="m">maschile</option><option value="f">femminile</option></select></div><button class="sm red del">Elimina tecnica</button></div>`;
  const q=s=>r.querySelector(s),cb=q("input[type=checkbox]");cb.dataset.id=m.id;
  q(".ck span").textContent=m.n;q(".n").value=m.n;q(".f").value=m.f||"";q(".t").value=m.t||"";q(".d").value=m.d;
  const meta=()=>q(".hint").textContent=m.d==="nessuno"?"nessun passo":"passo: "+m.d;meta();
@@ -120,6 +121,7 @@ function rowEl(m){
  q(".n").onchange=e=>{m.n=e.target.value.trim()||m.n;e.target.value=m.n;q(".ck span").textContent=m.n;saveMoves();refresh()};
  q(".f").onchange=e=>{m.f=e.target.value;saveMoves();if(m.f)open.add(m.f);render()};
  q(".t").onchange=e=>{m.t=e.target.value;saveMoves();render()};
+ q(".g").value=m.g||"";q(".g").onchange=e=>{m.g=e.target.value;saveMoves()};
  q(".d").onchange=e=>{m.d=e.target.value;saveMoves();meta()};
  q(".del").onclick=()=>{if(!confirm("Eliminare «"+m.n+"»?"))return;moves.splice(moves.indexOf(m),1);sel.delete(m.id);saveMoves();saveSel();render()};
  return r}
@@ -154,7 +156,7 @@ function check(){
 FIELDS.forEach(f=>$(f).addEventListener("input",()=>{check();saveCfg()}));
 const clampRep=()=>{let n=Math.floor(+$("rep").value);if(!(n>=1))n=1;if(n>4)n=4;$("rep").value=n};
 $("rep").addEventListener("input",()=>{const v=$("rep").value;if(v!==""&&+v>4)$("rep").value=4;});
-$("rep").addEventListener("change",()=>{clampRep();check();saveCfg()});clampRep();["gs","ge"].forEach(i=>$(i).onchange=saveCfg);
+$("rep").addEventListener("change",()=>{clampRep();check();saveCfg()});clampRep();["gs","ge","dz"].forEach(i=>$(i).onchange=saveCfg);
 $("all").onclick=()=>{moves.forEach(m=>sel.add(m.id));saveSel();refresh()};
 $("none").onclick=()=>{sel.clear();saveSel();refresh()};
 $("addBtn").onclick=()=>{const v=$("newName").value.trim();if(!v)return;const m={id:uid(),n:v,f:$("newF").value,t:$("newT").value,d:$("newD").value};moves.push(m);sel.add(m.id);if(m.f)open.add(m.f);$("newName").value="";saveMoves();saveSel();render()};
@@ -163,9 +165,9 @@ $("reset").onclick=()=>{if(confirm("Ripristinare l'elenco iniziale? Le modifiche
 function pickVoice(){const v=speechSynthesis.getVoices().filter(x=>x.lang&&x.lang.toLowerCase().startsWith("it"));voice=v.find(x=>/premium|enhanced|migliorata/i.test(x.name))||v[0]||null}
 if("speechSynthesis"in window){pickVoice();speechSynthesis.onvoiceschanged=pickVoice}
 const NUM=["","uno","due","tre","quattro","cinque","sei","sette"];
-function say(t){if(!("speechSynthesis"in window))return;
+function say(t,onend){if(!("speechSynthesis"in window))return;
  t=t.replace(/\bF([1-7])\b/g,(a,n)=>"forma "+NUM[n]);
- speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);u.lang="it-IT";if(voice)u.voice=voice;u.rate=+$("rate").value;speechSynthesis.speak(u)}
+ speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);u.lang="it-IT";if(voice)u.voice=voice;u.rate=+$("rate").value;if(onend)u.onend=onend;speechSynthesis.speak(u)}
 function sayMany(a){if(!("speechSynthesis"in window))return;speechSynthesis.cancel();setTimeout(()=>a.forEach(t=>{const u=new SpeechSynthesisUtterance(t);u.lang="it-IT";if(voice)u.voice=voice;u.rate=+$("rate").value;speechSynthesis.speak(u)}),150)}
 async function lock(){try{if(navigator.wakeLock)wake=await navigator.wakeLock.request("screen")}catch(e){}}
 document.addEventListener("visibilitychange",()=>{if(run&&document.visibilityState==="visible")lock()});
@@ -177,18 +179,40 @@ function guardIdx(name,pool){const all=moves.map((m,i)=>i).filter(i=>moves[i].t=
  if(!g.length){const fs=new Set(pool.map(i=>moves[i].f));g=all.filter(i=>fs.has(moves[i].f))}
  if(!g.length)g=all;return g[Math.floor(Math.random()*g.length)]}
 function gp(i){const v=DIRS[moves[i].d]||[0,0];return{i,nx:run.pos[0]+v[0],ny:run.pos[1]+v[1]}}
+let actx=null;
+function audioInit(){try{const AC=window.AudioContext||window.webkitAudioContext;if(AC&&!actx)actx=new AC();if(actx&&actx.state==="suspended")actx.resume()}catch(e){}}
+function beep(dur){try{if(!actx)return;const o=actx.createOscillator(),g=actx.createGain(),t=actx.currentTime;o.type="sine";o.frequency.value=880;g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(.5,t+.01);g.gain.setValueAtTime(.5,t+dur-.02);g.gain.linearRampToValueAtTime(0,t+dur);o.connect(g);g.connect(actx.destination);o.start(t);o.stop(t+dur+.02)}catch(e){}}
+const PHRASES=[
+ {t:"Piegate quelle cazzo di ginocchia!"},{t:"Bene, ma non benissimo..."},{t:"Fate schifo!"},{t:"Cos’era quello?"},{t:"Deve essere un movimento più elegante!"},
+ {t:"Me lo fai rivedere?",ok:c=>c.canRepeat},
+ {t:"Maledetti, maledetti!"},{t:"Cioè raga, seriamente..."},{t:"Se non piegate quelle ginocchia..."},{t:"Giù bene quelle ginocchia!"},{t:"Dovete soffrire!"},
+ {f:c=>c.fem?`E la chiami ${c.name} quella?`:`E lo chiami ${c.name} quello?`}];
+const ORD=/^(prima|seconda|terza|quarta|quinta|sesta|settima|ottava|nona|decima)$/i;
+function fem(m){if(m.g)return m.g==="f";const w=m.n.trim().split(/\s+/),a=w[0].toLowerCase(),l=w[w.length-1];return ORD.test(a)||a==="guardia"||(/a$/i.test(l)&&!/^f\d$/i.test(l))}
+const spokenName=m=>run.dup.has(m.n.toLowerCase())&&m.f?m.n+" di Forma "+m.f.replace(/\D/g,""):m.n;
+function dzPhrase(){
+ const R=run.c.dia/2,m=moves[run.last],v=DIRS[m.d]||[0,0],nx=run.pos[0]+v[0],ny=run.pos[1]+v[1];
+ const ctx={canRepeat:nx*nx+ny*ny<=R*R+1e-9,name:spokenName(m),fem:fem(m)};
+ let p=null;for(let k=0;k<40&&!p;k++){const c=PHRASES[Math.floor(Math.random()*PHRASES.length)];if((!c.ok||c.ok(ctx))&&(c!==run.lastPhrase||PHRASES.length<2))p=c}
+ if(!p)p=PHRASES.find(c=>!c.ok)||PHRASES[0];
+ run.lastPhrase=p;run.next=Date.now()+rndT(run.c.mn,run.c.mx)*1000;
+ say(p.f?p.f(ctx):p.t,()=>{if(run&&!run.paused)run.next=Math.max(run.next,Date.now()+300)})}
 function start(){
  const c={dur:+$("dur").value,mn:+$("mn").value,mx:+$("mx").value,dia:+$("dia").value,rep:Math.min(4,Math.max(1,Math.floor(+$("rep").value)||1))};$("rep").value=c.rep;
  if(!(c.dur>0)||!(c.mn>=1)||c.mx<c.mn||!(c.dia>=4)){alert("Controlla i valori: durata > 0, intervallo minimo ≥ 1 sec, massimo ≥ minimo, diametro ≥ 4 passi.");return}
  const pool=getPool();if(!pool.length){alert("Seleziona almeno una tecnica.");return}
  saveCfg();
- run={c,pool,pos:[0,0],seen:new Set(),last:-1,count:0,paused:false,pausedAt:0,ending:false,rp:null,endAt:Date.now()+5000+c.dur*60000,next:Date.now()+5000,sg:guardIdx($("gs").value,pool),eg:guardIdx($("ge").value,pool)};
+ run={c,pool,pos:[0,0],seen:new Set(),last:-1,count:0,paused:false,pausedAt:0,ending:false,rp:null,endAt:Date.now()+10000+c.dur*60000,next:Date.now()+10000,t0:Date.now()+10000,bp:{},sg:guardIdx($("gs").value,pool),eg:guardIdx($("ge").value,pool)};
  run.first=run.sg>=0;run.pickN=0;run.repAt=new Set();
  {const Y=c.rep,X=Math.max(1,Math.floor(c.dur*60/((c.mn+c.mx)/2)));if(Y>=2){const R=Math.min(X,1+Math.floor(Math.random()*Math.ceil(X/Y/10)));while(run.repAt.size<R)run.repAt.add(1+Math.floor(Math.random()*X))}}
  {const cn={};moves.map((m,i)=>i).forEach(i=>{const k=moves[i].n.toLowerCase();cn[k]=(cn[k]||0)+1});run.dup=new Set(Object.keys(cn).filter(k=>cn[k]>1))}
+ run.dz=$("dz").checked;run.tCount=0;run.phraseAt=new Set();run.phraseDue=false;run.lastPhrase=null;
+ if(run.dz){const Y=PHRASES.length,X=Math.max(1,Math.floor(c.dur*60/((c.mn+c.mx)/2))),lo=Math.floor(X/20),hi=Math.floor(X/10),T0=lo+Math.floor(Math.random()*(hi-lo+1)),P=Math.ceil(X/Y),ks=[];
+  for(let k=Math.max(1,T0);k<=Math.max(Math.max(1,T0),X-P-2);k++)ks.push(k);
+  while(run.phraseAt.size<Math.min(P,ks.length))run.phraseAt.add(ks[Math.floor(Math.random()*ks.length)])}
  $("setup").style.display="none";$("train").style.display="block";$("pause").textContent="Pausa";
- $("name").textContent="Pronti…";$("arrow").textContent="";$("dirtxt").textContent="";
- say("Pronti");lock();draw();timer=setInterval(tick,200)}
+ $("name").textContent="Prendere posizione";$("arrow").textContent="";$("dirtxt").textContent="";
+ audioInit();say("Prendere posizione!");lock();draw();timer=setInterval(tick,200)}
 function pick(){
  const R=run.c.dia/2,R2=R*R,[x,y]=run.pos,d0=Math.hypot(x,y),cand=[];
  run.pool.forEach(i=>{const v=DIRS[moves[i].d]||[0,0],nx=x+v[0],ny=y+v[1];if(nx*nx+ny*ny<=R2+1e-9)cand.push({i,nx,ny,dd:Math.hypot(nx,ny)})});
@@ -209,21 +233,24 @@ function pick(){
  return p}
 function go(p){
  const m=moves[p.i],v=DIRS[m.d]||DIRS.nessuno;
- run.pos=[p.nx,p.ny];if(run.pool.includes(p.i))run.seen.add(p.i);run.last=p.i;run.count++;
+ run.pos=[p.nx,p.ny];if(run.pool.includes(p.i))run.seen.add(p.i);run.last=p.i;run.count++;run.tCount++;
  run.next=Date.now()+rndT(run.c.mn,run.c.mx)*1000;
- const sp=run.dup.has(m.n.toLowerCase())&&m.f?m.n+" di Forma "+m.f.replace(/\D/g,""):m.n;
+ const sp=spokenName(m);
  $("name").textContent=sp;$("arrow").textContent=v[2];
  $("dirtxt").textContent=[m.f?"Forma "+m.f.replace(/\D/g,""):"",m.t,m.d==="nessuno"?"nessun passo":"passo: "+m.d].filter(Boolean).join(" · ");
- say(sp);draw()}
+ say(sp+"!");draw()}
 function tick(){
  if(!run||run.paused)return;
  const now=Date.now(),rem=run.endAt-now;
  $("stats").textContent=`Comandi: ${run.count} · Tecniche chiamate: ${run.pool.filter(i=>run.seen.has(i)).length}/${run.pool.length}`;
  if(run.ending){if(now>=run.next)finish();return}
- const s=Math.max(0,Math.ceil(rem/1000));$("time").textContent=String(Math.floor(s/60)).padStart(2,"0")+":"+String(s%60).padStart(2,"0");
+ const s=Math.max(0,Math.ceil(Math.min(rem,run.c.dur*60000)/1000));$("time").textContent=String(Math.floor(s/60)).padStart(2,"0")+":"+String(s%60).padStart(2,"0");
  if(rem<=0){if(now>=run.next){if(run.eg>=0){run.ending=true;$("time").textContent="";go(gp(run.eg))}else finish()}return}
+ if(now<=run.t0+250){const left=run.t0-now;[4,3,2,1].forEach(k=>{if(left<=k*1000&&!run.bp[k]){run.bp[k]=1;beep(k===1?.3:.15)}})}
  if(now>=run.next){
+  if(run.dz&&run.phraseAt.has(run.tCount)){run.phraseAt.delete(run.tCount);run.phraseDue=true}
   if(run.first){run.first=false;go(gp(run.sg))}
+  else if(run.phraseDue&&!(run.rp&&run.rp.left>0)&&run.last>=0){run.phraseDue=false;dzPhrase()}
   else if(run.rp&&run.rp.left>0){run.rp.left--;go(gp(run.rp.i))}
   else{const p=pick();if(p)go(p);else limit()}}}
 function limit(){clearInterval(timer);sayMany(["Limite area di allenamento raggiunto","Allenamento terminato"]);$("name").textContent="Limite area di allenamento raggiunto";$("arrow").textContent="";$("dirtxt").textContent="Allenamento terminato";$("time").textContent="";if(wake){wake.release();wake=null}run.paused=true}
@@ -231,7 +258,7 @@ function finish(){clearInterval(timer);sayMany(["Allenamento terminato"]);$("nam
 function stop(){clearInterval(timer);speechSynthesis.cancel();if(wake){wake.release();wake=null}run=null;$("train").style.display="none";$("setup").style.display="block"}
 $("go").onclick=start;$("stop").onclick=stop;
 $("pause").onclick=()=>{if(!run)return;
- if(run.paused){const dt=Date.now()-run.pausedAt;run.endAt+=dt;run.next+=dt;run.paused=false;$("pause").textContent="Pausa";lock()}
+ if(run.paused){const dt=Date.now()-run.pausedAt;run.endAt+=dt;run.next+=dt;run.t0+=dt;run.paused=false;$("pause").textContent="Pausa";lock()}
  else{run.paused=true;run.pausedAt=Date.now();speechSynthesis.cancel();$("pause").textContent="Riprendi"}};
 function draw(){
  const c=$("cv"),g=c.getContext("2d"),S=220,R=run.c.dia/2,sc=(S/2-14)/R;
