@@ -8,7 +8,7 @@
 <meta name="theme-color" content="#0b0f1a">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-180.png">
-<title>Ludo Trainer</title>
+<title>Ludo Trainer V1.015</title>
 <style>
 *{box-sizing:border-box}
 html,body{margin:0;background:#0b0f1a;color:#f1f5f9;font-family:-apple-system,system-ui,sans-serif}
@@ -41,7 +41,7 @@ summary{font-size:18px;padding:10px 0;cursor:pointer}.cnt{color:#94a3b8;font-siz
 .hint{font-size:13px;color:#94a3b8;line-height:1.4}
 </style></head><body>
 <div id="setup">
-<h1>Ludo Trainer</h1>
+<h1>Ludo Trainer V1.015</h1>
 <div class="card">
 <div class="row"><label>Durata totale (minuti)</label><input id="dur" type="number" min="1" step="any" inputmode="decimal" value="10"></div>
 <div class="row"><label>Intervallo minimo (sec)</label><input id="mn" type="number" min="1" step="0.1" inputmode="decimal" value="2"></div>
@@ -215,7 +215,7 @@ function routineTick(now){const rt=run.rt,r=RT[rt.kind];
 const REM=["Avete fatto più schifo del solito!","Avete fatto meno schifo del solito!","Quando imparerete a piegare le ginocchia?","Per fortuna abbiamo finito!","Mamma mia, che cosa ho visto!"];
 const BYE=["dove inizieremo a fare sul serio!","dove inizierete a soffrire sul serio!","studiate!","mi auguro migliore di quello che ho appena visto!"];
 const rnd1=a=>a[Math.floor(Math.random()*a.length)];
-function endSpeech(){if(run&&run.dz)sayMany(["Allenamento completato!",rnd1(REM),"Ci vediamo al prossimo allenamento, "+rnd1(BYE)]);else sayMany(["Allenamento completato! Ci vediamo al prossimo allenamento!"])}
+function endSpeech(){if(run&&run.dz)sayMany(["Allenamento terminato!",rnd1(REM),"Ci vediamo al prossimo allenamento, "+rnd1(BYE)]);else sayMany(["Allenamento terminato! Ci vediamo al prossimo allenamento!"])}
 function start(){
  const c={dur:+$("dur").value,mn:+$("mn").value,mx:+$("mx").value,dia:+$("dia").value,rep:Math.min(4,Math.max(1,Math.floor(+$("rep").value)||1))};$("rep").value=c.rep;
  if(!(c.dur>0)||!(c.mn>=1)||c.mx<c.mn||!(c.dia>=4)){alert("Controlla i valori: durata > 0, intervallo minimo ≥ 1 sec, massimo ≥ minimo, diametro ≥ 4 passi.");return}
@@ -236,7 +236,7 @@ function start(){
    while(list.length&&fits(list)<0)list.pop();
    if(list.length){const slack=fits(list)-(21+31*(list.length-1)),u=list.map(()=>Math.floor(Math.random()*(slack+1))).sort((a,b)=>a-b);
     list.forEach((k,i)=>{const at=(i?run.rtPlan[i-1].at+31:21)+(u[i]-(i?u[i-1]:0));run.rtPlan.push({at,kind:k})})}}}
- $("setup").style.display="none";$("train").style.display="block";$("pause").textContent="Pausa";
+ $("setup").style.display="none";$("train").style.display="block";$("pause").textContent="Pausa";$("pause").style.display="";$("stop").textContent="Stop";
  $("name").textContent="Prendere posizione";$("arrow").textContent="";$("dirtxt").textContent="";
  audioInit();say("Prendere posizione!");lock();draw();timer=setInterval(tick,200)}
 function pick(){
@@ -282,15 +282,19 @@ function tick(){
   else if(run.phraseDue&&!(run.rp&&run.rp.left>0)&&run.last>=0){run.phraseDue=false;dzPhrase()}
   else if(run.rp&&run.rp.left>0){run.rp.left--;go(gp(run.rp.i))}
   else{const p=pick();if(p)go(p);else limit()}}}
-function limit(){clearInterval(timer);run.done=true;sayMany(["Limite area di allenamento raggiunto","Allenamento terminato"]);$("name").textContent="Limite area di allenamento raggiunto";$("arrow").textContent="";$("dirtxt").textContent="Allenamento terminato";$("time").textContent="";if(wake){wake.release();wake=null}run.paused=true}
-function finish(){clearInterval(timer);run.done=true;endSpeech();$("name").textContent="Fine!";$("arrow").textContent="";$("dirtxt").textContent="";$("time").textContent="";if(wake){wake.release();wake=null}run.paused=true}
-function stop(){clearInterval(timer);if(run&&!run.done)endSpeech();if(wake){wake.release();wake=null}run=null;$("train").style.display="none";$("setup").style.display="block"}
+function limit(){clearInterval(timer);run.done=true;sayMany(["Limite area di allenamento raggiunto","Allenamento terminato"]);$("name").textContent="Limite area di allenamento raggiunto";$("arrow").textContent="";$("dirtxt").textContent="Allenamento TERMINATO";$("pause").style.display="none";$("stop").textContent="Chiudi";$("time").textContent="";if(wake){wake.release();wake=null}run.paused=true}
+function endUI(label){$("name").textContent=label;$("arrow").textContent="";$("dirtxt").textContent="";$("time").textContent="";$("pause").style.display="none";$("stop").textContent="Chiudi"}
+function finish(){clearInterval(timer);run.done=true;endSpeech();endUI("Allenamento TERMINATO");if(wake){wake.release();wake=null}run.paused=true}
+function stop(){
+ clearInterval(timer);if(wake){wake.release();wake=null}
+ if(run&&!run.done){run.done=true;run.paused=true;endSpeech();endUI("Allenamento TERMINATO");return}
+ run=null;$("train").style.display="none";$("setup").style.display="block"}
 $("go").onclick=start;$("stop").onclick=stop;
 $("pause").onclick=()=>{if(!run||run.done)return;
  if(run.paused){const dt=Date.now()-run.pausedAt;run.endAt+=dt;run.next+=dt;run.t0+=dt;run.paused=false;$("pause").textContent="Pausa";lock();
-  say("Ripresa dell'allenamento");run.rt=null;
+  say("Ripresa dell'allenamento");$("name").textContent="RIPRESA dell'allenamento";$("arrow").textContent="";$("dirtxt").textContent="";run.rt=null;
   if(!run.first&&!run.ending){run.rp=null;run.resumeG=true;run.next=Date.now()+2500}}
- else{run.paused=true;run.pausedAt=Date.now();$("pause").textContent="Riprendi";say("Allenamento in pausa")}};
+ else{run.paused=true;run.pausedAt=Date.now();$("pause").textContent="Riprendi";say("Allenamento in pausa");$("name").textContent="Allenamento in PAUSA";$("arrow").textContent="";$("dirtxt").textContent=""}};
 function draw(){
  const c=$("cv"),g=c.getContext("2d"),S=220,R=run.c.dia/2,sc=(S/2-14)/R;
  g.clearRect(0,0,S,S);g.strokeStyle="#2a3350";g.lineWidth=2;g.beginPath();g.arc(S/2,S/2,R*sc,0,7);g.stroke();
