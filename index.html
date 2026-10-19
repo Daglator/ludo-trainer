@@ -8,7 +8,7 @@
 <meta name="theme-color" content="#0b0f1a">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-180.png">
-<title>Ludo Trainer - v1.015</title>
+<title>Ludo Trainer - v1.016</title>
 <style>
 *{box-sizing:border-box}
 html,body{margin:0;background:#0b0f1a;color:#f1f5f9;font-family:-apple-system,system-ui,sans-serif}
@@ -41,7 +41,7 @@ summary{font-size:18px;padding:10px 0;cursor:pointer}.cnt{color:#94a3b8;font-siz
 .hint{font-size:13px;color:#94a3b8;line-height:1.4}
 </style></head><body>
 <div id="setup">
-<h1>Ludo Trainer - v1.015</h1>
+<h1>Ludo Trainer - v1.016</h1>
 <div class="card">
 <div class="row"><label>Durata totale (minuti)</label><input id="dur" type="number" min="1" step="any" inputmode="decimal" value="10"></div>
 <div class="row"><label>Intervallo minimo (sec)</label><input id="mn" type="number" min="1" step="0.1" inputmode="decimal" value="2"></div>
@@ -100,15 +100,15 @@ if(!Array.isArray(moves)){const old=J("lt_moves2")||J("lt_moves");
 if(!Array.isArray(seen))seen=[];
 DEFAULT.forEach(b=>{if(!seen.includes(b.id)&&!moves.some(m=>m.id===b.id||(m.n===b.n&&(m.f||"")===b.f)))moves.push(clone(b))});
 seen=[...new Set([...seen,...DEFAULT.map(x=>x.id)])];
-const sel=new Set(Array.isArray(selArr)?selArr:moves.map(m=>m.id));
+const sel=new Set();
 const saveMoves=()=>{W("lt_moves3",moves);W("lt_base3",seen)},saveSel=()=>W("lt_sel3",[...sel]);saveMoves();saveSel();
 const FIELDS=["dur","mn","mx","dia","rep","rate"];let cfgG={gs:"",ge:""};
-try{const c=J("lt_cfg")||{};FIELDS.forEach(f=>{if(c[f])$(f).value=c[f]});cfgG={gs:c.gs||"",ge:c.ge||""};$("dz").checked=!!c.dz}catch(e){}
+try{const c=J("lt_cfg")||{};FIELDS.forEach(f=>{if(c[f])$(f).value=c[f]});$("dz").checked=!!c.dz}catch(e){}
 function saveCfg(){const c={gs:$("gs").value,ge:$("ge").value,dz:$("dz").checked};FIELDS.forEach(f=>c[f]=$(f).value);W("lt_cfg",c)}
 const opts=(l,b)=>`<option value="">${b}</option>`+l.map(k=>`<option>${k}</option>`).join("");
 const fo=opts(FORMS,"Forma"),to=opts(TYPES,"Tipo"),dO=Object.keys(DIRS).map(k=>`<option>${k}</option>`).join("");
 $("newF").innerHTML=fo;$("newT").innerHTML=to;$("newD").innerHTML=dO;
-const open=new Set(["F1"]);
+const open=new Set();
 const idsOf=(f,t)=>moves.filter(m=>(m.f||"")===f&&(t===undefined||(m.t||"")===t));
 function rowEl(m){
  const r=document.createElement("div");r.className="mv";
@@ -160,7 +160,7 @@ $("rep").addEventListener("change",()=>{clampRep();check();saveCfg()});clampRep(
 $("all").onclick=()=>{moves.forEach(m=>sel.add(m.id));saveSel();refresh()};
 $("none").onclick=()=>{sel.clear();saveSel();refresh()};
 $("addBtn").onclick=()=>{const v=$("newName").value.trim();if(!v)return;const m={id:uid(),n:v,f:$("newF").value,t:$("newT").value,d:$("newD").value};moves.push(m);sel.add(m.id);if(m.f)open.add(m.f);$("newName").value="";saveMoves();saveSel();render()};
-$("reset").onclick=()=>{if(confirm("Ripristinare l'elenco iniziale? Le modifiche e le tecniche aggiunte andranno perse e tutta la lista tornerà selezionata.")){moves=clone(DEFAULT);sel.clear();moves.forEach(m=>sel.add(m.id));saveMoves();saveSel();render()}};
+$("reset").onclick=()=>{if(confirm("Ripristinare l'elenco iniziale? Le modifiche e le tecniche aggiunte andranno perse.")){moves=clone(DEFAULT);sel.clear();saveMoves();saveSel();render()}};
 
 function pickVoice(){const v=speechSynthesis.getVoices().filter(x=>x.lang&&x.lang.toLowerCase().startsWith("it"));voice=v.find(x=>/premium|enhanced|migliorata/i.test(x.name))||v[0]||null}
 if("speechSynthesis"in window){pickVoice();speechSynthesis.onvoiceschanged=pickVoice}
