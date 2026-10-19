@@ -275,19 +275,22 @@ function tick(){
  if(rem<=0){if(now>=run.next){if(run.dz&&run.said===0&&run.last>=0){dzPhrase();return}if(run.eg>=0){run.ending=true;$("time").textContent="";go(gp(run.eg))}else finish()}return}
  if(now<=run.t0+250){const left=run.t0-now;[4,3,2,1].forEach(k=>{if(left<=k*1000&&!run.bp[k]){run.bp[k]=1;beep(k===1?.3:.15,k===1?1320:880)}})}
  if(now>=run.next){
+  if(run.resumeG){run.resumeG=false;const g=guardIdx("",run.pool);if(g>=0){go(gp(g));return}}
   if(run.dz&&run.phraseAt.has(run.tCount)){run.phraseAt.delete(run.tCount);run.phraseDue=true}
   if(run.first){run.first=false;go(gp(run.sg))}
   else if(run.rtPlan.length&&run.tCount>=run.rtPlan[0].at&&!(run.rp&&run.rp.left>0)&&run.last>=0&&routineDue(rem)){}
   else if(run.phraseDue&&!(run.rp&&run.rp.left>0)&&run.last>=0){run.phraseDue=false;dzPhrase()}
   else if(run.rp&&run.rp.left>0){run.rp.left--;go(gp(run.rp.i))}
   else{const p=pick();if(p)go(p);else limit()}}}
-function limit(){clearInterval(timer);sayMany(["Limite area di allenamento raggiunto","Allenamento terminato"]);$("name").textContent="Limite area di allenamento raggiunto";$("arrow").textContent="";$("dirtxt").textContent="Allenamento terminato";$("time").textContent="";if(wake){wake.release();wake=null}run.paused=true}
-function finish(){clearInterval(timer);endSpeech();$("name").textContent="Fine!";$("arrow").textContent="";$("dirtxt").textContent="";$("time").textContent="";if(wake){wake.release();wake=null}run.paused=true}
-function stop(){clearInterval(timer);speechSynthesis.cancel();if(wake){wake.release();wake=null}run=null;$("train").style.display="none";$("setup").style.display="block"}
+function limit(){clearInterval(timer);run.done=true;sayMany(["Limite area di allenamento raggiunto","Allenamento terminato"]);$("name").textContent="Limite area di allenamento raggiunto";$("arrow").textContent="";$("dirtxt").textContent="Allenamento terminato";$("time").textContent="";if(wake){wake.release();wake=null}run.paused=true}
+function finish(){clearInterval(timer);run.done=true;endSpeech();$("name").textContent="Fine!";$("arrow").textContent="";$("dirtxt").textContent="";$("time").textContent="";if(wake){wake.release();wake=null}run.paused=true}
+function stop(){clearInterval(timer);if(run&&!run.done)endSpeech();if(wake){wake.release();wake=null}run=null;$("train").style.display="none";$("setup").style.display="block"}
 $("go").onclick=start;$("stop").onclick=stop;
-$("pause").onclick=()=>{if(!run)return;
- if(run.paused){const dt=Date.now()-run.pausedAt;run.endAt+=dt;run.next+=dt;run.t0+=dt;if(run.rt){run.rt.at+=dt;run.rt.fb+=dt}run.paused=false;$("pause").textContent="Pausa";lock()}
- else{run.paused=true;run.pausedAt=Date.now();speechSynthesis.cancel();$("pause").textContent="Riprendi"}};
+$("pause").onclick=()=>{if(!run||run.done)return;
+ if(run.paused){const dt=Date.now()-run.pausedAt;run.endAt+=dt;run.next+=dt;run.t0+=dt;run.paused=false;$("pause").textContent="Pausa";lock();
+  say("Ripresa dell'allenamento");run.rt=null;
+  if(!run.first&&!run.ending){run.rp=null;run.resumeG=true;run.next=Date.now()+2500}}
+ else{run.paused=true;run.pausedAt=Date.now();$("pause").textContent="Riprendi";say("Allenamento in pausa")}};
 function draw(){
  const c=$("cv"),g=c.getContext("2d"),S=220,R=run.c.dia/2,sc=(S/2-14)/R;
  g.clearRect(0,0,S,S);g.strokeStyle="#2a3350";g.lineWidth=2;g.beginPath();g.arc(S/2,S/2,R*sc,0,7);g.stroke();
