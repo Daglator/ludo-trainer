@@ -8,7 +8,7 @@
 <meta name="theme-color" content="#0b0f1a">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-180.png">
-<title>Ludo Trainer - v1.018</title>
+<title>Ludo Trainer - v1.019</title>
 <style>
 *{box-sizing:border-box}
 html,body{margin:0;background:#0b0f1a;color:#f1f5f9;font-family:-apple-system,system-ui,sans-serif}
@@ -42,7 +42,7 @@ summary{font-size:18px;padding:10px 0;cursor:pointer}.cnt{color:#94a3b8;font-siz
 .hint{font-size:13px;color:#94a3b8;line-height:1.4}
 </style></head><body>
 <div id="setup">
-<h1>Ludo Trainer - v1.018</h1>
+<h1>Ludo Trainer - v1.019</h1>
 <div class="card">
 <div class="row"><label>Durata totale (minuti)</label><input id="dur" type="number" min="1" step="any" inputmode="decimal" value="10"></div>
 <div class="row"><label>Intervallo minimo (sec)</label><input id="mn" type="number" min="1" step="0.1" inputmode="decimal" value="2.5"></div>
@@ -202,19 +202,20 @@ function dzPhrase(){
  if(!p)p=PHRASES.find(c=>!c.ok)||PHRASES[0];
  run.lastPhrase=p;run.said++;run.next=Date.now()+rndT(run.c.mn,run.c.mx)*1000;
  say(p.f?p.f(ctx):p.t,()=>{if(run&&!run.paused)run.next=Math.max(run.next,Date.now()+300)})}
-const RT={GAMBE:{intro:"Adesso ne contate 10 sulle gambe, pronti?",w1:5,cad:2,after:null,w2:5,label:"Routine GAMBE",dur:34},
- PETTORALI:{intro:"Adesso ne contate 10 sulle braccia, a terra!",w1:10,cad:3,after:"In piedi!",w2:10,label:"Routine PETTORALI",dur:56}};
+const RT={GAMBE:{intro:"Adesso ne contate 10 sulle gambe! Braccia dritte! Pronti?",w1:2,cad:2,after:"Adesso vediamo se siete migliorati!",w2:2,label:"Routine GAMBE",dur:34},
+ PETTORALI:{intro:"Adesso ne contate 10 sulle braccia! Giù la spada! Mettetevi a terra!",w1:4,cad:2,after:"Adesso vediamo se siete migliorati! In piedi! Riprendete la spada!",w2:4,label:"Routine PETTORALI",dur:42}};
 const NUMS=["UNO","DUE","TRE","QUATTRO","CINQUE","SEI","SETTE","OTTO","NOVE","DIECI"];
-function startRoutine(kind){const r=RT[kind],rt=run.rt={kind,phase:"intro",at:0,n:0,fb:Date.now()+10000};run.rp=null;
+function startRoutine(kind){const r=RT[kind],rt=run.rt={kind,phase:"intro",at:0,n:0,fb:Date.now()+Math.max(3000,r.intro.length*90)};run.rp=null;
  $("name").textContent=r.label;$("arrow").textContent="";$("dirtxt").textContent="";
  say(r.intro,()=>{if(run&&run.rt===rt&&rt.phase==="intro"){rt.phase="w1";rt.at=Date.now()+r.w1*1000}})}
 function routineDue(rem){const k=run.rtPlan[0].kind;run.rtPlan.shift();if(rem>RT[k].dur*1000){startRoutine(k);return true}return false}
 function routineTick(now){const rt=run.rt,r=RT[rt.kind];
  if(rt.phase==="intro"){if(now>=rt.fb){rt.phase="w1";rt.at=now+r.w1*1000}return}
+ if(rt.phase==="aftw"){if(now>=rt.fb){rt.phase="end";rt.at=now+r.w2*1000}return}
  if(now<rt.at)return;
  if(rt.phase==="w1"||rt.phase==="count"){rt.phase="count";say(NUMS[rt.n]+"!");rt.n++;
-  if(rt.n>=10){rt.phase=r.after?"after":"end";rt.at=now+(r.after?r.cad:r.w2)*1000}else rt.at=now+r.cad*1000;return}
- if(rt.phase==="after"){say(r.after);rt.phase="end";rt.at=now+r.w2*1000;return}
+  if(rt.n>=10){rt.phase="after";rt.at=now+r.cad*1000}else rt.at=now+r.cad*1000;return}
+ if(rt.phase==="after"){rt.phase="aftw";rt.fb=now+Math.max(3000,r.after.length*90);say(r.after,()=>{if(run&&run.rt===rt&&rt.phase==="aftw"){rt.phase="end";rt.at=Date.now()+r.w2*1000}});return}
  if(rt.phase==="end"){run.rt=null;if(now>=run.endAt){run.next=now;return}const g=guardNow(guardIdx("",run.pool));if(g>=0)go(gp(g));else run.next=now}}
 const REM=["Avete fatto più schifo del solito!","Avete fatto meno schifo del solito!","Quando imparerete a piegare le ginocchia?","Per fortuna abbiamo finito!","Mamma mia, che cosa ho visto!","Siete migliorati, ma fate ancora schifo!"];
 const BYE=["dove inizieremo a fare sul serio!","dove inizierete a soffrire sul serio!","studiate!","mi auguro migliore di quello che ho appena visto!"];
