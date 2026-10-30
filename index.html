@@ -8,7 +8,7 @@
 <meta name="theme-color" content="#0b0f1a">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-180.png">
-<title>Ludo Trainer - v1.019</title>
+<title>Ludo Trainer - v1.021</title>
 <style>
 *{box-sizing:border-box}
 html,body{margin:0;background:#0b0f1a;color:#f1f5f9;font-family:-apple-system,system-ui,sans-serif}
@@ -39,16 +39,19 @@ summary{font-size:18px;padding:10px 0;cursor:pointer}.cnt{color:#94a3b8;font-siz
 #time{font-size:44px;font-variant-numeric:tabular-nums;margin:10px 0}
 #stats{color:#94a3b8;margin-bottom:10px}canvas{background:#151b2b;border-radius:50%;margin:10px 0}
 .dz{background:#b91c1c;border-radius:10px;padding:10px 12px;margin:10px 0}.dz label{font-weight:700;color:#fff}.dz input{width:26px;height:26px;accent-color:#facc15}
+.seg{display:flex;gap:6px}.seg .chip{padding:9px 16px;font-size:16px}.seg .chip.on{background:#2dd4bf;color:#06201c}
 .hint{font-size:13px;color:#94a3b8;line-height:1.4}
 </style></head><body>
 <div id="setup">
-<h1>Ludo Trainer - v1.019</h1>
+<h1>Ludo Trainer - v1.021</h1>
 <div class="card">
 <div class="row"><label>Durata totale (minuti)</label><input id="dur" type="number" min="1" step="any" inputmode="decimal" value="10"></div>
 <div class="row"><label>Intervallo minimo (sec)</label><input id="mn" type="number" min="1" step="0.1" inputmode="decimal" value="2.5"></div>
 <div class="row"><label>Intervallo massimo (sec)</label><input id="mx" type="number" min="1" step="0.1" inputmode="decimal" value="3.2"></div>
 <div class="row"><label>Diametro spazio (passi)</label><input id="dia" type="number" min="4" step="1" inputmode="numeric" value="6"></div>
 <div class="row"><label>Ripetizioni consecutive max (1-4)</label><input id="rep" type="number" min="1" max="4" step="1" inputmode="numeric" value="2"></div>
+<div class="row"><label>Timbro vocale</label><div class="seg"><button class="chip" id="tvU">Uomo</button><button class="chip" id="tvD">Donna</button></div></div>
+<p class="hint" id="tvhint" style="margin:0 0 6px"></p>
 <div class="row"><label>Velocità voce</label><input id="rate" type="range" min="0.7" max="1.4" step="0.05" value="1"></div>
 <div class="row dz"><label>DanZan Mode</label><input id="dz" type="checkbox"></div>
 <div class="row"><label>Guardia iniziale</label><select id="gs"></select></div>
@@ -102,9 +105,9 @@ moves.forEach(m=>{if(m.id==="guardia-di-f2"&&m.n==="Guardia di F2")m.n="Guardia 
 seen=[...new Set([...seen,...DEFAULT.map(x=>x.id)])];
 const sel=new Set(Array.isArray(selArr)?selArr.filter(id=>moves.some(m=>m.id===id)):[]);
 const saveMoves=()=>{W("lt_moves3",moves);W("lt_base3",seen)},saveSel=()=>W("lt_sel3",[...sel]);saveMoves();saveSel();
-const FIELDS=["dur","mn","mx","dia","rep","rate"];let cfgG={gs:"",ge:""};
-try{const c=J("lt_cfg")||{};FIELDS.forEach(f=>{if(c[f])$(f).value=c[f]});cfgG={gs:c.gs||"",ge:c.ge||""}}catch(e){}
-function saveCfg(){const c={gs:$("gs").value,ge:$("ge").value};FIELDS.forEach(f=>c[f]=$(f).value);W("lt_cfg",c)}
+const FIELDS=["dur","mn","mx","dia","rep","rate"];let cfgG={gs:"",ge:""},tv="d";
+try{const c=J("lt_cfg")||{};FIELDS.forEach(f=>{if(c[f])$(f).value=c[f]});cfgG={gs:c.gs||"",ge:c.ge||""};tv=c.tv==="u"?"u":"d"}catch(e){}
+function saveCfg(){const c={gs:$("gs").value,ge:$("ge").value,tv};FIELDS.forEach(f=>c[f]=$(f).value);W("lt_cfg",c)}
 const opts=(l,b)=>`<option value="">${b}</option>`+l.map(k=>`<option>${k}</option>`).join("");
 const fo=opts(FORMS,"Forma"),to=opts(TYPES,"Tipo"),dO=Object.keys(DIRS).map(k=>`<option>${k}</option>`).join("");
 $("newF").innerHTML=fo;$("newT").innerHTML=to;$("newD").innerHTML=dO;
@@ -162,10 +165,20 @@ $("none").onclick=()=>{sel.clear();saveSel();refresh()};
 $("addBtn").onclick=()=>{const v=$("newName").value.trim();if(!v)return;const m={id:uid(),n:v,f:$("newF").value,t:$("newT").value,d:$("newD").value};moves.push(m);sel.add(m.id);if(m.f)open.add(m.f);$("newName").value="";saveMoves();saveSel();render()};
 $("reset").onclick=()=>{if(!confirm("RESET: tutti i valori e l'elenco delle tecniche tornano a quelli iniziali. Le tecniche aggiunte o modificate andranno perse. Continuare?"))return;
  const D={dur:10,mn:2.5,mx:3.2,dia:6,rep:2,rate:1};FIELDS.forEach(f=>$(f).value=D[f]);$("dz").checked=false;
- cfgG={gs:"",ge:""};moves=clone(DEFAULT);sel.clear();open.clear();$("addBox").open=false;saveMoves();saveSel();render();$("gs").value="";$("ge").value="";saveCfg()};
+ cfgG={gs:"",ge:""};setTv("d",false);moves=clone(DEFAULT);sel.clear();open.clear();$("addBox").open=false;saveMoves();saveSel();render();$("gs").value="";$("ge").value="";saveCfg()};
 
-function pickVoice(){const v=speechSynthesis.getVoices().filter(x=>x.lang&&x.lang.toLowerCase().startsWith("it"));voice=v.find(x=>/premium|enhanced|migliorata/i.test(x.name))||v[0]||null}
-if("speechSynthesis"in window){pickVoice();speechSynthesis.onvoiceschanged=pickVoice}
+const MALE=/\b(luca|cosimo|diego|giorgio|marco|matteo|paolo|riccardo|roberto|stefano|claudio|lorenzo|francesco|giuseppe|gianni)\b/i,FEMALE=/\b(alice|federica|paola|elsa|elisa|isabella|carla|silvia|chiara|giulia|lucia|francesca|valentina|martina|sara|google italiano)\b/i;
+function pickVoice(){
+ if(!("speechSynthesis"in window))return;
+ const all=speechSynthesis.getVoices().filter(x=>x.lang&&x.lang.toLowerCase().replace("_","-").startsWith("it")),want=tv==="u"?MALE:FEMALE,other=tv==="u"?FEMALE:MALE,q=x=>/premium|enhanced|migliorata|potenziata/i.test(x.name)?0:1;
+ const c=all.filter(x=>want.test(x.name)).sort((a,b)=>q(a)-q(b));
+ voice=c[0]||all.filter(x=>!other.test(x.name)).sort((a,b)=>q(a)-q(b))[0]||all[0]||null;
+ const h=$("tvhint");if(!h)return;
+ h.textContent=!voice?"Nessuna voce italiana trovata sul dispositivo.":c.length?"Voce in uso: "+voice.name:"Nessuna voce "+(tv==="u"?"maschile":"femminile")+" italiana riconosciuta: uso "+voice.name+". Potrebbe servire scaricare altre voci italiane nelle impostazioni di iOS."}
+function setTv(v,sp){tv=v;$("tvU").classList.toggle("on",v==="u");$("tvD").classList.toggle("on",v==="d");pickVoice();saveCfg();if(sp)say(v==="u"?"Voce maschile":"Voce femminile")}
+$("tvU").onclick=()=>setTv("u",true);$("tvD").onclick=()=>setTv("d",true);
+if("speechSynthesis"in window){speechSynthesis.onvoiceschanged=pickVoice}
+setTv(tv,false);
 const NUM=["","uno","due","tre","quattro","cinque","sei","sette"];
 function say(t,onend){if(!("speechSynthesis"in window))return;
  t=t.replace(/\bF([1-7])\b/g,(a,n)=>"forma "+NUM[n]);
@@ -191,7 +204,8 @@ const PHRASES=[
  {t:"Me lo fai rivedere?",ok:c=>c.canRepeat},
  {t:"Maledetti! Maledetti!"},{t:"Cioè raga, seriamente!"},{t:"Se non piegate quelle ginocchia ve le faccio piegare io!"},{t:"Giù bene quelle ginocchia!"},{t:"Dovete soffrire!"},
  {f:c=>c.fem?`E la chiami ${c.name} quella?`:`E lo chiami ${c.name} quello?`},
- {t:"Fate pena e misericordia!"}];
+ {t:"Fate pena e misericordia!"},
+ {t:"Raga! Fate cagare!"},{t:"Raga! Siete inguardabili!"},{t:"Non vi si può guardare!"}];
 const ORD=/^(prima|seconda|terza|quarta|quinta|sesta|settima|ottava|nona|decima)$/i;
 function fem(m){if(m.g)return m.g==="f";const w=m.n.trim().split(/\s+/),a=w[0].toLowerCase(),l=w[w.length-1];return ORD.test(a)||a==="guardia"||(/a$/i.test(l)&&!/^f\d$/i.test(l))}
 const spokenName=m=>run.dup.has(m.n.toLowerCase())&&m.f?m.n+" di Forma "+m.f.replace(/\D/g,""):m.n;
