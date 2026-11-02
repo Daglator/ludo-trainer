@@ -8,7 +8,7 @@
 <meta name="theme-color" content="#0b0f1a">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-180.png">
-<title>Ludo Trainer - v1.019</title>
+<title>Ludo Trainer - v1.021</title>
 <style>
 *{box-sizing:border-box}
 html,body{margin:0;background:#0b0f1a;color:#f1f5f9;font-family:-apple-system,system-ui,sans-serif}
@@ -42,7 +42,7 @@ summary{font-size:18px;padding:10px 0;cursor:pointer}.cnt{color:#94a3b8;font-siz
 .hint{font-size:13px;color:#94a3b8;line-height:1.4}
 </style></head><body>
 <div id="setup">
-<h1>Ludo Trainer - v1.019</h1>
+<h1>Ludo Trainer - v1.021</h1>
 <div class="card">
 <div class="row"><label>Durata totale (minuti)</label><input id="dur" type="number" min="1" step="any" inputmode="decimal" value="10"></div>
 <div class="row"><label>Intervallo minimo (sec)</label><input id="mn" type="number" min="1" step="0.1" inputmode="decimal" value="2.5"></div>
@@ -85,12 +85,12 @@ const FORMS=["F1","F2","F3","F4","F5","F6","F7"],TYPES=["attacco","parata","guar
 const slug=s=>s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
 const uid=()=>"u"+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 // d(nome, tipo, movimento, forma)
-const d=(n,t,r,f="F1",id)=>{const s=slug(n);return{id:id||((f==="F1"||s.endsWith(f.toLowerCase()))?s:s+"-"+f.toLowerCase()),n,t,d:r,f}};
+const d=(n,t,r,f="F1",id,al)=>{const s=slug(n),o={id:id||((f==="F1"||s.endsWith(f.toLowerCase()))?s:s+"-"+f.toLowerCase()),n,t,d:r,f};if(al)o.al=al;return o};
 const DEFAULT=[d("Fendente","attacco","avanti"),d("Montante","attacco","avanti"),d("Rovescio","attacco","avanti"),d("Laterale Destro","attacco","avanti destra"),d("Laterale Sinistro","attacco","avanti sinistra"),d("Diagonale Destro","attacco","avanti destra"),d("Diagonale Sinistro","attacco","avanti sinistra"),d("Ana Destro","attacco","avanti destra"),d("Ana Sinistro","attacco","avanti sinistra"),d("Levante Destro","attacco","avanti destra"),d("Levante Sinistro","attacco","avanti sinistra"),
 d("Prima","parata","indietro"),d("Seconda","parata","indietro"),d("Terza","parata","indietro"),d("Quarta","parata","indietro"),d("Quinta","parata","indietro"),d("Sesta","parata","indietro"),
 d("Prima Avanzata","parata","indietro"),d("Seconda Avanzata","parata","indietro"),d("Terza Avanzata","parata","indietro"),d("Quarta Avanzata","parata","indietro"),d("Quinta Avanzata","parata","indietro"),d("Sesta Avanzata","parata","indietro"),
 d("Terza d'Incontro","parata","avanti destra"),d("Quarta d'Incontro","parata","avanti sinistra"),d("Quinta d'Incontro","parata","avanti destra"),d("Sesta d'Incontro","parata","avanti sinistra"),
-d("Guardia di F1","guardia","nessuno","F1"),d("Guardia media","guardia","nessuno","F2","guardia-di-f2"),d("Guardia alta","guardia","indietro","F2"),d("Guardia bassa","guardia","avanti","F2")];
+d("Guardia di F1","guardia","nessuno","F1"),d("Guardia media","guardia","nessuno","F2","guardia-di-f2",["Guardia di F2"]),d("Guardia alta","guardia","indietro","F2"),d("Guardia bassa","guardia","nessuno","F2")];
 const $=id=>document.getElementById(id),clone=x=>JSON.parse(JSON.stringify(x)),J=k=>{try{return JSON.parse(localStorage.getItem(k))}catch(e){return null}},W=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 let moves=J("lt_moves3"),seen=J("lt_base3"),selArr=J("lt_sel3"),run=null,timer=null,wake=null,voice=null;
 if(!Array.isArray(moves)){const old=J("lt_moves2")||J("lt_moves");
@@ -98,7 +98,7 @@ if(!Array.isArray(moves)){const old=J("lt_moves2")||J("lt_moves");
  else moves=[]}
 if(!Array.isArray(seen))seen=[];
 DEFAULT.forEach(b=>{if(!seen.includes(b.id)&&!moves.some(m=>m.id===b.id||(m.n===b.n&&(m.f||"")===b.f)))moves.push(clone(b))});
-moves.forEach(m=>{if(m.id==="guardia-di-f2"&&m.n==="Guardia di F2")m.n="Guardia media"});
+moves.forEach(m=>{if(m.id==="guardia-di-f2"&&m.n==="Guardia di F2")m.n="Guardia media";if(m.id==="guardia-di-f2"&&m.n==="Guardia media"&&!m.al)m.al=["Guardia di F2"];if(m.id==="guardia-bassa-f2"&&m.d==="avanti")m.d="nessuno"});
 seen=[...new Set([...seen,...DEFAULT.map(x=>x.id)])];
 const sel=new Set(Array.isArray(selArr)?selArr.filter(id=>moves.some(m=>m.id===id)):[]);
 const saveMoves=()=>{W("lt_moves3",moves);W("lt_base3",seen)},saveSel=()=>W("lt_sel3",[...sel]);saveMoves();saveSel();
@@ -191,10 +191,11 @@ const PHRASES=[
  {t:"Me lo fai rivedere?",ok:c=>c.canRepeat},
  {t:"Maledetti! Maledetti!"},{t:"Cioè raga, seriamente!"},{t:"Se non piegate quelle ginocchia ve le faccio piegare io!"},{t:"Giù bene quelle ginocchia!"},{t:"Dovete soffrire!"},
  {f:c=>c.fem?`E la chiami ${c.name} quella?`:`E lo chiami ${c.name} quello?`},
- {t:"Fate pena e misericordia!"}];
+ {t:"Fate pena e misericordia!"},
+ {t:"Raga! Fate cagare!"},{t:"Raga! Siete inguardabili!"},{t:"Non vi si può guardare!"}];
 const ORD=/^(prima|seconda|terza|quarta|quinta|sesta|settima|ottava|nona|decima)$/i;
 function fem(m){if(m.g)return m.g==="f";const w=m.n.trim().split(/\s+/),a=w[0].toLowerCase(),l=w[w.length-1];return ORD.test(a)||a==="guardia"||(/a$/i.test(l)&&!/^f\d$/i.test(l))}
-const spokenName=m=>run.dup.has(m.n.toLowerCase())&&m.f?m.n+" di Forma "+m.f.replace(/\D/g,""):m.n;
+const spokenName=(m,nm)=>{nm=nm||m.n;return run.dup.has(nm.toLowerCase())&&m.f?nm+" di Forma "+m.f.replace(/\D/g,""):nm};
 function dzPhrase(){
  const R=run.c.dia/2,m=moves[run.last],v=DIRS[m.d]||[0,0],nx=run.pos[0]+v[0],ny=run.pos[1]+v[1];
  const ctx={canRepeat:nx*nx+ny*ny<=R*R+1e-9,name:spokenName(m),fem:fem(m)};
@@ -266,7 +267,7 @@ function go(p){
  const m=moves[p.i],v=DIRS[m.d]||DIRS.nessuno;
  run.pos=[p.nx,p.ny];if(run.pool.includes(p.i))run.seen.add(p.i);run.last=p.i;run.count++;run.tCount++;
  run.next=Date.now()+rndT(run.c.mn,run.c.mx)*1000;
- const sp=spokenName(m);
+ const sp=spokenName(m,rnd1([m.n,...(m.al||[])]));
  $("name").textContent=sp;$("arrow").textContent=v[2];
  $("dirtxt").textContent=[m.f?"Forma "+m.f.replace(/\D/g,""):"",m.t,m.d==="nessuno"?"nessun passo":"passo: "+m.d].filter(Boolean).join(" · ");
  say(sp+"!");draw()}
