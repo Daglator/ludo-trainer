@@ -8,7 +8,7 @@
 <meta name="theme-color" content="#0b0f1a">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-180.png">
-<title>Ludo Trainer - v1.021</title>
+<title>Ludo Trainer - v1.022</title>
 <style>
 *{box-sizing:border-box}
 html,body{margin:0;background:#0b0f1a;color:#f1f5f9;font-family:-apple-system,system-ui,sans-serif}
@@ -39,10 +39,11 @@ summary{font-size:18px;padding:10px 0;cursor:pointer}.cnt{color:#94a3b8;font-siz
 #time{font-size:44px;font-variant-numeric:tabular-nums;margin:10px 0}
 #stats{color:#94a3b8;margin-bottom:10px}canvas{background:#151b2b;border-radius:50%;margin:10px 0}
 .dz{background:#b91c1c;border-radius:10px;padding:10px 12px;margin:10px 0}.dz label{font-weight:700;color:#fff}.dz input{width:26px;height:26px;accent-color:#facc15}
+.sub{border-bottom:none;padding:0;margin-top:6px}.sub>summary{font-size:14px;color:#94a3b8;text-transform:uppercase;letter-spacing:.04em;padding:8px 0}
 .hint{font-size:13px;color:#94a3b8;line-height:1.4}
 </style></head><body>
 <div id="setup">
-<h1>Ludo Trainer - v1.021</h1>
+<h1>Ludo Trainer - v1.022</h1>
 <div class="card">
 <div class="row"><label>Durata totale (minuti)</label><input id="dur" type="number" min="1" step="any" inputmode="decimal" value="10"></div>
 <div class="row"><label>Intervallo minimo (sec)</label><input id="mn" type="number" min="1" step="0.1" inputmode="decimal" value="2.5"></div>
@@ -108,7 +109,7 @@ function saveCfg(){const c={gs:$("gs").value,ge:$("ge").value};FIELDS.forEach(f=
 const opts=(l,b)=>`<option value="">${b}</option>`+l.map(k=>`<option>${k}</option>`).join("");
 const fo=opts(FORMS,"Forma"),to=opts(TYPES,"Tipo"),dO=Object.keys(DIRS).map(k=>`<option>${k}</option>`).join("");
 $("newF").innerHTML=fo;$("newT").innerHTML=to;$("newD").innerHTML=dO;
-const open=new Set();
+const open=new Set(),openSub=new Set();
 const idsOf=(f,t)=>moves.filter(m=>(m.f||"")===f&&(t===undefined||(m.t||"")===t));
 function rowEl(m){
  const r=document.createElement("div");r.className="mv";
@@ -125,23 +126,29 @@ function rowEl(m){
  q(".d").onchange=e=>{m.d=e.target.value;saveMoves();meta()};
  q(".del").onclick=()=>{if(!confirm("Eliminare «"+m.n+"»?"))return;moves.splice(moves.indexOf(m),1);sel.delete(m.id);saveMoves();saveSel();render()};
  return r}
+const TORDER=["guardia","attacco","parata","rin","nir","rin incrociato","nir incrociato",""];
+const TL={guardia:{n:"GUARDIE",s:"Seleziona tutte le GUARDIE",d:"Deseleziona tutte le GUARDIE",c:(a,b)=>`GUARDIE ${a}/${b} SELEZIONATE`},
+ attacco:{n:"ATTACCHI",s:"Seleziona tutti gli ATTACCHI",d:"Deseleziona tutti gli ATTACCHI",c:(a,b)=>`ATTACCHI ${a}/${b} SELEZIONATI`},
+ parata:{n:"PARATE",s:"Seleziona tutte le PARATE",d:"Deseleziona tutte le PARATE",c:(a,b)=>`PARATE ${a}/${b} SELEZIONATE`}};
+const tl=t=>{if(TL[t])return TL[t];const N=(t||"altro").toUpperCase();return{n:N,s:"Seleziona tutto: "+N,d:"Deseleziona tutto: "+N,c:(a,b)=>`${N} ${a}/${b} SELEZIONATI`}};
 function render(){
  const box=$("list");box.innerHTML="";
  [...FORMS,""].filter(f=>idsOf(f).length).forEach(f=>{
   const det=document.createElement("details");det.open=open.has(f);
   det.ontoggle=()=>{det.open?open.add(f):open.delete(f)};
   det.innerHTML=`<summary><b>${f||"Senza forma"}</b> <span class="cnt" data-cf="${f}"></span></summary><div class="bar"><button class="chip" data-g data-f="${f}"></button></div>`;
-  [...TYPES,""].forEach(t=>{const items=idsOf(f,t);if(!items.length)return;
-   const h=document.createElement("div");h.className="grp";
-   h.innerHTML=`<span>${t||"altro"} <span class="cnt" data-cf="${f}" data-ct="${t}"></span></span><button class="chip" data-g data-f="${f}" data-t="${t}"></button>`;
-   det.appendChild(h);items.forEach(m=>det.appendChild(rowEl(m)))});
+  TORDER.forEach(t=>{const items=idsOf(f,t);if(!items.length)return;const key=f+"|"+t;
+   const sub=document.createElement("details");sub.className="sub";sub.open=openSub.has(key);
+   sub.ontoggle=()=>{sub.open?openSub.add(key):openSub.delete(key)};
+   sub.innerHTML=`<summary>${tl(t).n}</summary><div class="bar"><button class="chip" data-g data-f="${f}" data-t="${t}"></button></div><div class="hint cnt" data-cf="${f}" data-ct="${t}" style="margin:0 0 6px"></div>`;
+   items.forEach(m=>sub.appendChild(rowEl(m)));det.appendChild(sub)});
   box.appendChild(det)});
  box.querySelectorAll("[data-g]").forEach(b=>b.onclick=()=>{const ids=idsOf(b.dataset.f,b.dataset.t),all=ids.every(m=>sel.has(m.id));ids.forEach(m=>all?sel.delete(m.id):sel.add(m.id));saveSel();refresh()});
  refresh()}
 function refresh(){
  document.querySelectorAll("#list [data-id]").forEach(c=>c.checked=sel.has(c.dataset.id));
- document.querySelectorAll("#list [data-g]").forEach(b=>{const ids=idsOf(b.dataset.f,b.dataset.t),all=ids.length&&ids.every(m=>sel.has(m.id));b.textContent=b.dataset.t===undefined?(all?"Deseleziona tutta la forma":"Seleziona tutta la forma"):(all?"Deseleziona":"Seleziona")});
- document.querySelectorAll("#list .cnt").forEach(s=>{const ids=idsOf(s.dataset.cf,s.dataset.ct);s.textContent=ids.filter(m=>sel.has(m.id)).length+"/"+ids.length+" selezionate"});
+ document.querySelectorAll("#list [data-g]").forEach(b=>{const ids=idsOf(b.dataset.f,b.dataset.t),all=ids.length&&ids.every(m=>sel.has(m.id));b.textContent=b.dataset.t===undefined?(all?"Deseleziona tutta la FORMA":"Seleziona tutta la FORMA"):(all?tl(b.dataset.t).d:tl(b.dataset.t).s)});
+ document.querySelectorAll("#list .cnt").forEach(s=>{const ids=idsOf(s.dataset.cf,s.dataset.ct),n=ids.filter(m=>sel.has(m.id)).length;s.textContent=s.dataset.ct===undefined?n+"/"+ids.length+" selezionate":tl(s.dataset.ct).c(n,ids.length)});
  guards();check()}
 function getPool(){return moves.map((m,i)=>i).filter(i=>sel.has(moves[i].id))}
 function guards(){const gs=getPool().map(i=>moves[i]).filter(m=>m.t==="guardia"),cn={};
@@ -159,10 +166,10 @@ $("rep").addEventListener("input",()=>{const v=$("rep").value;if(v!==""&&+v>4)$(
 $("rep").addEventListener("change",()=>{clampRep();check();saveCfg()});clampRep();["gs","ge"].forEach(i=>$(i).onchange=saveCfg);
 $("all").onclick=()=>{moves.forEach(m=>sel.add(m.id));saveSel();refresh()};
 $("none").onclick=()=>{sel.clear();saveSel();refresh()};
-$("addBtn").onclick=()=>{const v=$("newName").value.trim();if(!v)return;const m={id:uid(),n:v,f:$("newF").value,t:$("newT").value,d:$("newD").value};moves.push(m);sel.add(m.id);if(m.f)open.add(m.f);$("newName").value="";saveMoves();saveSel();render()};
+$("addBtn").onclick=()=>{const v=$("newName").value.trim();if(!v)return;const m={id:uid(),n:v,f:$("newF").value,t:$("newT").value,d:$("newD").value};moves.push(m);sel.add(m.id);if(m.f)open.add(m.f);openSub.add((m.f||"")+"|"+(m.t||""));$("newName").value="";saveMoves();saveSel();render()};
 $("reset").onclick=()=>{if(!confirm("RESET: tutti i valori e l'elenco delle tecniche tornano a quelli iniziali. Le tecniche aggiunte o modificate andranno perse. Continuare?"))return;
  const D={dur:10,mn:2.5,mx:3.2,dia:6,rep:2,rate:1};FIELDS.forEach(f=>$(f).value=D[f]);$("dz").checked=false;
- cfgG={gs:"",ge:""};moves=clone(DEFAULT);sel.clear();open.clear();$("addBox").open=false;saveMoves();saveSel();render();$("gs").value="";$("ge").value="";saveCfg()};
+ cfgG={gs:"",ge:""};moves=clone(DEFAULT);sel.clear();open.clear();openSub.clear();$("addBox").open=false;saveMoves();saveSel();render();$("gs").value="";$("ge").value="";saveCfg()};
 
 function pickVoice(){const v=speechSynthesis.getVoices().filter(x=>x.lang&&x.lang.toLowerCase().startsWith("it"));voice=v.find(x=>/premium|enhanced|migliorata/i.test(x.name))||v[0]||null}
 if("speechSynthesis"in window){pickVoice();speechSynthesis.onvoiceschanged=pickVoice}
