@@ -8,7 +8,7 @@
 <meta name="theme-color" content="#0b0f1a">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-180.png">
-<title>Ludo Trainer - v1.022</title>
+<title>Ludo Trainer - v1.023</title>
 <style>
 *{box-sizing:border-box}
 html,body{margin:0;background:#0b0f1a;color:#f1f5f9;font-family:-apple-system,system-ui,sans-serif}
@@ -43,7 +43,7 @@ summary{font-size:18px;padding:10px 0;cursor:pointer}.cnt{color:#94a3b8;font-siz
 .hint{font-size:13px;color:#94a3b8;line-height:1.4}
 </style></head><body>
 <div id="setup">
-<h1>Ludo Trainer - v1.022</h1>
+<h1>Ludo Trainer - v1.023</h1>
 <div class="card">
 <div class="row"><label>Durata totale (minuti)</label><input id="dur" type="number" min="1" step="any" inputmode="decimal" value="10"></div>
 <div class="row"><label>Intervallo minimo (sec)</label><input id="mn" type="number" min="1" step="0.1" inputmode="decimal" value="2.5"></div>
@@ -140,14 +140,14 @@ function render(){
   TORDER.forEach(t=>{const items=idsOf(f,t);if(!items.length)return;const key=f+"|"+t;
    const sub=document.createElement("details");sub.className="sub";sub.open=openSub.has(key);
    sub.ontoggle=()=>{sub.open?openSub.add(key):openSub.delete(key)};
-   sub.innerHTML=`<summary>${tl(t).n}</summary><div class="bar"><button class="chip" data-g data-f="${f}" data-t="${t}"></button></div><div class="hint cnt" data-cf="${f}" data-ct="${t}" style="margin:0 0 6px"></div>`;
+   sub.innerHTML=`<summary>${tl(t).n}${f?" di "+f:""}</summary><div class="bar"><button class="chip" data-g data-f="${f}" data-t="${t}"></button></div><div class="hint cnt" data-cf="${f}" data-ct="${t}" style="margin:0 0 6px"></div>`;
    items.forEach(m=>sub.appendChild(rowEl(m)));det.appendChild(sub)});
   box.appendChild(det)});
  box.querySelectorAll("[data-g]").forEach(b=>b.onclick=()=>{const ids=idsOf(b.dataset.f,b.dataset.t),all=ids.every(m=>sel.has(m.id));ids.forEach(m=>all?sel.delete(m.id):sel.add(m.id));saveSel();refresh()});
  refresh()}
 function refresh(){
  document.querySelectorAll("#list [data-id]").forEach(c=>c.checked=sel.has(c.dataset.id));
- document.querySelectorAll("#list [data-g]").forEach(b=>{const ids=idsOf(b.dataset.f,b.dataset.t),all=ids.length&&ids.every(m=>sel.has(m.id));b.textContent=b.dataset.t===undefined?(all?"Deseleziona tutta la FORMA":"Seleziona tutta la FORMA"):(all?tl(b.dataset.t).d:tl(b.dataset.t).s)});
+ document.querySelectorAll("#list [data-g]").forEach(b=>{const ids=idsOf(b.dataset.f,b.dataset.t),all=ids.length&&ids.every(m=>sel.has(m.id));b.textContent=b.dataset.t===undefined?(all?"Deseleziona":"Seleziona")+" tutta la FORMA"+(b.dataset.f.replace(/\D/g,"")?" "+b.dataset.f.replace(/\D/g,""):""):(all?tl(b.dataset.t).d:tl(b.dataset.t).s)+(b.dataset.f?" di "+b.dataset.f:"")});
  document.querySelectorAll("#list .cnt").forEach(s=>{const ids=idsOf(s.dataset.cf,s.dataset.ct),n=ids.filter(m=>sel.has(m.id)).length;s.textContent=s.dataset.ct===undefined?n+"/"+ids.length+" selezionate":tl(s.dataset.ct).c(n,ids.length)});
  guards();check()}
 function getPool(){return moves.map((m,i)=>i).filter(i=>sel.has(moves[i].id))}
