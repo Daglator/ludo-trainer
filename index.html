@@ -8,7 +8,7 @@
 <meta name="theme-color" content="#0b0f1a">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-180.png">
-<title>Ludo Trainer - v1.023</title>
+<title>Ludo Trainer - v1.024</title>
 <style>
 *{box-sizing:border-box}
 html,body{margin:0;background:#0b0f1a;color:#f1f5f9;font-family:-apple-system,system-ui,sans-serif}
@@ -40,16 +40,18 @@ summary{font-size:18px;padding:10px 0;cursor:pointer}.cnt{color:#94a3b8;font-siz
 #stats{color:#94a3b8;margin-bottom:10px}canvas{background:#151b2b;border-radius:50%;margin:10px 0}
 .dz{background:#b91c1c;border-radius:10px;padding:10px 12px;margin:10px 0}.dz label{font-weight:700;color:#fff}.dz input{width:26px;height:26px;accent-color:#facc15}
 .sub{border-bottom:none;padding:0;margin-top:6px}.sub>summary{font-size:14px;color:#94a3b8;text-transform:uppercase;letter-spacing:.04em;padding:8px 0}
+.seg{display:flex;gap:6px}.seg .chip{padding:9px 14px;font-size:15px}.chip.on{background:#2dd4bf;color:#06201c}
 .hint{font-size:13px;color:#94a3b8;line-height:1.4}
 </style></head><body>
 <div id="setup">
-<h1>Ludo Trainer - v1.023</h1>
+<h1>Ludo Trainer - v1.024</h1>
 <div class="card">
 <div class="row"><label>Durata totale (minuti)</label><input id="dur" type="number" min="1" step="any" inputmode="decimal" value="10"></div>
 <div class="row"><label>Intervallo minimo (sec)</label><input id="mn" type="number" min="1" step="0.1" inputmode="decimal" value="2.5"></div>
 <div class="row"><label>Intervallo massimo (sec)</label><input id="mx" type="number" min="1" step="0.1" inputmode="decimal" value="3.2"></div>
 <div class="row"><label>Diametro spazio (passi)</label><input id="dia" type="number" min="4" step="1" inputmode="numeric" value="6"></div>
 <div class="row"><label>Ripetizioni consecutive max (1-4)</label><input id="rep" type="number" min="1" max="4" step="1" inputmode="numeric" value="2"></div>
+<div class="row"><label>Lateralità atleta</label><div class="seg"><button class="chip" id="hD">Destrorso</button><button class="chip" id="hM">Mancino</button></div></div>
 <div class="row"><label>Velocità voce</label><input id="rate" type="range" min="0.7" max="1.4" step="0.05" value="1"></div>
 <div class="row dz"><label>DanZan Mode</label><input id="dz" type="checkbox"></div>
 <div class="row"><label>Guardia iniziale</label><select id="gs"></select></div>
@@ -86,12 +88,28 @@ const FORMS=["F1","F2","F3","F4","F5","F6","F7"],TYPES=["attacco","parata","guar
 const slug=s=>s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
 const uid=()=>"u"+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 // d(nome, tipo, movimento, forma)
-const d=(n,t,r,f="F1",id,al)=>{const s=slug(n),o={id:id||((f==="F1"||s.endsWith(f.toLowerCase()))?s:s+"-"+f.toLowerCase()),n,t,d:r,f};if(al)o.al=al;return o};
+const d=(n,t,r,f="F1",id,al,x)=>{const s=slug(n),o={id:id||((f==="F1"||s.endsWith(f.toLowerCase()))?s:s+"-"+f.toLowerCase()),n,t,d:r,f};if(al)o.al=al;if(x)Object.assign(o,x);return o};
 const DEFAULT=[d("Fendente","attacco","avanti"),d("Montante","attacco","avanti"),d("Rovescio","attacco","avanti"),d("Laterale Destro","attacco","avanti destra"),d("Laterale Sinistro","attacco","avanti sinistra"),d("Diagonale Destro","attacco","avanti destra"),d("Diagonale Sinistro","attacco","avanti sinistra"),d("Ana Destro","attacco","avanti destra"),d("Ana Sinistro","attacco","avanti sinistra"),d("Levante Destro","attacco","avanti destra"),d("Levante Sinistro","attacco","avanti sinistra"),
 d("Prima","parata","indietro"),d("Seconda","parata","indietro"),d("Terza","parata","indietro"),d("Quarta","parata","indietro"),d("Quinta","parata","indietro"),d("Sesta","parata","indietro"),
 d("Prima Avanzata","parata","indietro"),d("Seconda Avanzata","parata","indietro"),d("Terza Avanzata","parata","indietro"),d("Quarta Avanzata","parata","indietro"),d("Quinta Avanzata","parata","indietro"),d("Sesta Avanzata","parata","indietro"),
 d("Terza d'Incontro","parata","avanti destra"),d("Quarta d'Incontro","parata","avanti sinistra"),d("Quinta d'Incontro","parata","avanti destra"),d("Sesta d'Incontro","parata","avanti sinistra"),
-d("Guardia di F1","guardia","nessuno","F1"),d("Guardia media","guardia","nessuno","F2","guardia-di-f2",["Guardia di F2"]),d("Guardia alta","guardia","indietro","F2"),d("Guardia bassa","guardia","nessuno","F2")];
+d("Guardia di F1","guardia","nessuno","F1"),d("Guardia media","guardia","nessuno","F2","guardia-di-f2",["Guardia di F2"]),d("Guardia alta","guardia","indietro","F2"),d("Guardia bassa","guardia","avanti","F2","guardia-bassa-f2",null,{dyn:"bassa"}),
+d("Semiaffondo F2 basso in clemenza","attacco","avanti destra","F2","semiaffondo-f2-basso-in-clemenza",null,{mir:1}),
+d("Semiaffondo F2 basso in autorità","attacco","avanti sinistra","F2","semiaffondo-f2-basso-in-autorita",null,{mir:1}),
+d("Rin mano dominante","rin","nessuno","Riscaldamento","rin-mano-dominante",null,{g:"m"}),
+d("Nir mano dominante","nir","nessuno","Riscaldamento","nir-mano-dominante",null,{g:"m"}),
+d("Rin mano secondaria","rin","nessuno","Riscaldamento","rin-mano-secondaria",null,{g:"m"}),
+d("Nir mano secondaria","nir","nessuno","Riscaldamento","nir-mano-secondaria",null,{g:"m"}),
+d("Rin a due mani","rin","nessuno","Riscaldamento","rin-a-due-mani",null,{g:"m"}),
+d("Nir a due mani","nir","nessuno","Riscaldamento","nir-a-due-mani",null,{g:"m"}),
+d("Rin a due mani accucciati","rin","nessuno","Riscaldamento","rin-a-due-mani-accucciati",null,{g:"m"}),
+d("Nir a due mani accucciati","nir","nessuno","Riscaldamento","nir-a-due-mani-accucciati",null,{g:"m"}),
+d("Piegamenti sulle gambe","","nessuno","Riscaldamento","piegamenti-sulle-gambe",null,{g:"m",cnt:10}),
+d("Piegamenti sulle braccia","","nessuno","Riscaldamento","piegamenti-sulle-braccia",null,{g:"m",cnt:10}),
+d("Prima legatura di F1","","nessuno","Riscaldamento","prima-legatura-f1",null,{g:"f",seq:["montante","fendente","rovescio","fendente","montante"]}),
+d("Seconda legatura di F1","","nessuno","Riscaldamento","seconda-legatura-f1",null,{g:"f",seq:["laterale-destro","fendente","laterale-sinistro","fendente","laterale-destro"]}),
+d("Legatura completa di F1","","nessuno","Riscaldamento","legatura-completa-f1",null,{g:"f",seq:["montante","laterale-destro","fendente","laterale-sinistro","rovescio","laterale-sinistro","fendente","laterale-destro","montante"]}),
+d("La Maledetta","","nessuno","Riscaldamento","la-maledetta",null,{g:"f",seq:["montante","laterale-destro","diagonale-sinistro","fendente","rovescio","laterale-sinistro","diagonale-destro","fendente","montante"]})];
 const $=id=>document.getElementById(id),clone=x=>JSON.parse(JSON.stringify(x)),J=k=>{try{return JSON.parse(localStorage.getItem(k))}catch(e){return null}},W=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 let moves=J("lt_moves3"),seen=J("lt_base3"),selArr=J("lt_sel3"),run=null,timer=null,wake=null,voice=null;
 if(!Array.isArray(moves)){const old=J("lt_moves2")||J("lt_moves");
@@ -99,24 +117,37 @@ if(!Array.isArray(moves)){const old=J("lt_moves2")||J("lt_moves");
  else moves=[]}
 if(!Array.isArray(seen))seen=[];
 DEFAULT.forEach(b=>{if(!seen.includes(b.id)&&!moves.some(m=>m.id===b.id||(m.n===b.n&&(m.f||"")===b.f)))moves.push(clone(b))});
-moves.forEach(m=>{if(m.id==="guardia-di-f2"&&m.n==="Guardia di F2")m.n="Guardia media";if(m.id==="guardia-di-f2"&&m.n==="Guardia media"&&!m.al)m.al=["Guardia di F2"];if(m.id==="guardia-bassa-f2"&&m.d==="avanti")m.d="nessuno"});
+moves.forEach(m=>{if(m.id==="guardia-di-f2"&&m.n==="Guardia di F2")m.n="Guardia media";if(m.id==="guardia-di-f2"&&m.n==="Guardia media"&&!m.al)m.al=["Guardia di F2"];if(m.id==="guardia-bassa-f2"&&!m.dyn){m.dyn="bassa";m.d="avanti"}});
 seen=[...new Set([...seen,...DEFAULT.map(x=>x.id)])];
 const sel=new Set(Array.isArray(selArr)?selArr.filter(id=>moves.some(m=>m.id===id)):[]);
 const saveMoves=()=>{W("lt_moves3",moves);W("lt_base3",seen)},saveSel=()=>W("lt_sel3",[...sel]);saveMoves();saveSel();
-const FIELDS=["dur","mn","mx","dia","rep","rate"];let cfgG={gs:"",ge:""};
-try{const c=J("lt_cfg")||{};FIELDS.forEach(f=>{if(c[f])$(f).value=c[f]});cfgG={gs:c.gs||"",ge:c.ge||""}}catch(e){}
-function saveCfg(){const c={gs:$("gs").value,ge:$("ge").value};FIELDS.forEach(f=>c[f]=$(f).value);W("lt_cfg",c)}
+const FIELDS=["dur","mn","mx","dia","rep","rate"];let cfgG={gs:"",ge:""},hand="d";
+try{const c=J("lt_cfg")||{};FIELDS.forEach(f=>{if(c[f])$(f).value=c[f]});cfgG={gs:c.gs||"",ge:c.ge||""};hand=c.hand==="m"?"m":"d"}catch(e){}
+function saveCfg(){const c={gs:$("gs").value,ge:$("ge").value,hand};FIELDS.forEach(f=>c[f]=$(f).value);W("lt_cfg",c)}
 const opts=(l,b)=>`<option value="">${b}</option>`+l.map(k=>`<option>${k}</option>`).join("");
-const fo=opts(FORMS,"Forma"),to=opts(TYPES,"Tipo"),dO=Object.keys(DIRS).map(k=>`<option>${k}</option>`).join("");
+const fo=opts([...FORMS,"Riscaldamento"],"Forma"),to=opts(TYPES,"Tipo"),dO=Object.keys(DIRS).map(k=>`<option>${k}</option>`).join("");
 $("newF").innerHTML=fo;$("newT").innerHTML=to;$("newD").innerHTML=dO;
 const open=new Set(),openSub=new Set();
 const idsOf=(f,t)=>moves.filter(m=>(m.f||"")===f&&(t===undefined||(m.t||"")===t));
+const mirror=d=>({"avanti destra":"avanti sinistra","avanti sinistra":"avanti destra","destra":"sinistra","sinistra":"destra","indietro destra":"indietro sinistra","indietro sinistra":"indietro destra"}[d]||d);
+function dirOf(m){let d=m.d;if(m.dyn==="bassa")d=(run&&run.last>=0&&moves[run.last]&&moves[run.last].id==="guardia-di-f2")?"nessuno":"avanti";return hand==="m"&&m.mir?mirror(d):d}
+const vecOf=m=>DIRS[dirOf(m)]||[0,0];
+const stepsOf=i=>{const m=moves[i];return m.seq?m.seq.map(id=>moves.find(x=>x.id===id)).filter(Boolean).map(vecOf):[vecOf(m)]};
+const fitsFrom=(vs,x,y,R)=>{for(const v of vs){x+=v[0];y+=v[1];if(x*x+y*y>R*R+1e-9)return false}return true};
+const pathOK=(i,pos)=>fitsFrom(stepsOf(i),pos[0],pos[1],run.c.dia/2);
+function endPos(i,pos){let x=pos[0],y=pos[1];stepsOf(i).forEach(v=>{x+=v[0];y+=v[1]});return[x,y]}
+function legFits(m){const R=(+$("dia").value||0)/2,vs=m.seq.map(id=>moves.find(x=>x.id===id)).filter(Boolean).map(vecOf),r=Math.floor(R);for(let x=-r;x<=r;x++)for(let y=-r;y<=r;y++)if(x*x+y*y<=R*R&&fitsFrom(vs,x,y,R))return true;return false}
+const selOK=m=>!m.seq||legFits(m);
+const formLbl=m=>/^F\d$/.test(m.f||"")?"Forma "+m.f.slice(1):(m.f||"");
 function rowEl(m){
  const r=document.createElement("div");r.className="mv";
- r.innerHTML=`<div class="top"><label class="ck"><input type="checkbox" data-id=""><span></span></label><button class="sm sec">⋯</button></div><div class="hint"></div><div class="edit" hidden><input class="n"><div class="sels"><select class="f">${fo}</select><select class="t">${to}</select><select class="d">${dO}</select></div><div class="sels"><select class="g"><option value="">Genere: automatico</option><option value="m">maschile</option><option value="f">femminile</option></select></div><button class="sm red del">Elimina tecnica</button></div>`;
+ r.innerHTML=`<div class="top"><label class="ck"><input type="checkbox" data-id=""><span></span></label>${m.cnt!==undefined?'<input type="number" class="cn" min="10" step="1" inputmode="numeric" style="width:64px;text-align:center">':''}<button class="sm sec">⋯</button></div><div class="hint"></div><div class="edit" hidden><input class="n"><div class="sels"><select class="f">${fo}</select><select class="t">${to}</select><select class="d">${dO}</select></div><div class="sels"><select class="g"><option value="">Genere: automatico</option><option value="m">maschile</option><option value="f">femminile</option></select><select class="mir"><option value="">Mancini: passo invariato</option><option value="1">Mancini: passo speculare (*)</option></select></div><button class="sm red del">Elimina tecnica</button></div>`;
  const q=s=>r.querySelector(s),cb=q("input[type=checkbox]");cb.dataset.id=m.id;
  q(".ck span").textContent=m.n;q(".n").value=m.n;q(".f").value=m.f||"";q(".t").value=m.t||"";q(".d").value=m.d;
- const meta=()=>q(".hint").textContent=m.d==="nessuno"?"nessun passo":"passo: "+m.d;meta();
+ const meta=()=>{q(".hint").textContent=m.seq?"":m.cnt!==undefined?"numero di ripetizioni (minimo 10)":m.dyn==="bassa"?"passo: avanti (nessun passo dopo Guardia media)":(m.d==="nessuno"?"nessun passo":"passo: "+m.d)+(m.mir?" (specchio per mancini)":"")};meta();
+ if(m.seq)q(".hint").dataset.leg=m.id;
+ const cn=q(".cn");if(cn){cn.value=m.cnt;cn.onchange=e=>{let n=Math.floor(+e.target.value);if(!(n>=10))n=10;m.cnt=n;e.target.value=n;saveMoves()}}
+ q(".mir").value=m.mir?"1":"";q(".mir").onchange=e=>{m.mir=e.target.value?1:0;saveMoves();meta()};
  cb.onchange=()=>{cb.checked?sel.add(m.id):sel.delete(m.id);saveSel();refresh()};
  q("button.sec").onclick=()=>{const e=q(".edit");e.hidden=!e.hidden};
  q(".n").onchange=e=>{m.n=e.target.value.trim()||m.n;e.target.value=m.n;q(".ck span").textContent=m.n;saveMoves();refresh()};
@@ -133,24 +164,27 @@ const TL={guardia:{n:"GUARDIE",s:"Seleziona tutte le GUARDIE",d:"Deseleziona tut
 const tl=t=>{if(TL[t])return TL[t];const N=(t||"altro").toUpperCase();return{n:N,s:"Seleziona tutto: "+N,d:"Deseleziona tutto: "+N,c:(a,b)=>`${N} ${a}/${b} SELEZIONATI`}};
 function render(){
  const box=$("list");box.innerHTML="";
- [...FORMS,""].filter(f=>idsOf(f).length).forEach(f=>{
+ ["Riscaldamento",...FORMS,""].filter(f=>idsOf(f).length).forEach(f=>{
   const det=document.createElement("details");det.open=open.has(f);
   det.ontoggle=()=>{det.open?open.add(f):open.delete(f)};
   det.innerHTML=`<summary><b>${f||"Senza forma"}</b> <span class="cnt" data-cf="${f}"></span></summary><div class="bar"><button class="chip" data-g data-f="${f}"></button></div>`;
+  if(f==="Riscaldamento"){idsOf(f).forEach(m=>det.appendChild(rowEl(m)));box.appendChild(det);return}
   TORDER.forEach(t=>{const items=idsOf(f,t);if(!items.length)return;const key=f+"|"+t;
    const sub=document.createElement("details");sub.className="sub";sub.open=openSub.has(key);
    sub.ontoggle=()=>{sub.open?openSub.add(key):openSub.delete(key)};
    sub.innerHTML=`<summary>${tl(t).n}${f?" di "+f:""}</summary><div class="bar"><button class="chip" data-g data-f="${f}" data-t="${t}"></button></div><div class="hint cnt" data-cf="${f}" data-ct="${t}" style="margin:0 0 6px"></div>`;
    items.forEach(m=>sub.appendChild(rowEl(m)));det.appendChild(sub)});
   box.appendChild(det)});
- box.querySelectorAll("[data-g]").forEach(b=>b.onclick=()=>{const ids=idsOf(b.dataset.f,b.dataset.t),all=ids.every(m=>sel.has(m.id));ids.forEach(m=>all?sel.delete(m.id):sel.add(m.id));saveSel();refresh()});
+ box.querySelectorAll("[data-g]").forEach(b=>b.onclick=()=>{const ids=idsOf(b.dataset.f,b.dataset.t).filter(selOK),all=ids.every(m=>sel.has(m.id));ids.forEach(m=>all?sel.delete(m.id):sel.add(m.id));saveSel();refresh()});
  refresh()}
 function refresh(){
- document.querySelectorAll("#list [data-id]").forEach(c=>c.checked=sel.has(c.dataset.id));
- document.querySelectorAll("#list [data-g]").forEach(b=>{const ids=idsOf(b.dataset.f,b.dataset.t),all=ids.length&&ids.every(m=>sel.has(m.id));b.textContent=b.dataset.t===undefined?(all?"Deseleziona":"Seleziona")+" tutta la FORMA"+(b.dataset.f.replace(/\D/g,"")?" "+b.dataset.f.replace(/\D/g,""):""):(all?tl(b.dataset.t).d:tl(b.dataset.t).s)+(b.dataset.f?" di "+b.dataset.f:"")});
+ document.querySelectorAll("#list [data-id]").forEach(c=>{const mm=moves.find(x=>x.id===c.dataset.id);if(mm&&mm.seq&&!legFits(mm)){c.disabled=true;sel.delete(mm.id)}else c.disabled=false;c.checked=sel.has(c.dataset.id)});
+ document.querySelectorAll("#list [data-leg]").forEach(h=>{const mm=moves.find(x=>x.id===h.dataset.leg);h.textContent=legFits(mm)?`Legatura di ${mm.seq.length} tecniche, 2 secondi ciascuna`:"Spazio insufficiente: aumenta il diametro per usarla"});
+ document.querySelectorAll("#list [data-g]").forEach(b=>{const f=b.dataset.f,t=b.dataset.t,ids=idsOf(f,t).filter(selOK),all=ids.length&&ids.every(m=>sel.has(m.id)),verb=all?"Deseleziona":"Seleziona";
+  b.textContent=t===undefined?(f==="Riscaldamento"?verb+" tutti gli esercizi di riscaldamento":verb+" tutta la FORMA"+(f.replace(/\D/g,"")?" "+f.replace(/\D/g,""):"")):(all?tl(t).d:tl(t).s)+(f?" di "+f:"")});
  document.querySelectorAll("#list .cnt").forEach(s=>{const ids=idsOf(s.dataset.cf,s.dataset.ct),n=ids.filter(m=>sel.has(m.id)).length;s.textContent=s.dataset.ct===undefined?n+"/"+ids.length+" selezionate":tl(s.dataset.ct).c(n,ids.length)});
  guards();check()}
-function getPool(){return moves.map((m,i)=>i).filter(i=>sel.has(moves[i].id))}
+function getPool(){return moves.map((m,i)=>i).filter(i=>sel.has(moves[i].id)&&selOK(moves[i]))}
 function guards(){const gs=getPool().map(i=>moves[i]).filter(m=>m.t==="guardia"),cn={};
  moves.forEach(m=>{const k=m.n.toLowerCase();cn[k]=(cn[k]||0)+1});
  [["gs",cfgG.gs],["ge",cfgG.ge]].forEach(([id,v])=>{const s=$(id),cur=s.options.length?s.value:v;
@@ -160,16 +194,18 @@ function guards(){const gs=getPool().map(i=>moves[i]).filter(m=>m.t==="guardia")
 function check(){
  const n=getPool().length,avg=(+$("mn").value+ +$("mx").value)/2,calls=Math.floor($("dur").value*60/avg);
  $("warn").textContent=n===0?"Seleziona almeno una tecnica.":calls<n?`Attenzione: con questi tempi verranno chiamati circa ${calls} comandi per ${n} tecniche selezionate: non tutte potrebbero uscire.`:`Tecniche selezionate: ${n}. Circa ${calls} comandi in totale.`}
-FIELDS.forEach(f=>$(f).addEventListener("input",()=>{check();saveCfg()}));
+FIELDS.forEach(f=>$(f).addEventListener("input",()=>{check();saveCfg();if(f==="dia")refresh()}));
+function setHand(v){hand=v;$("hD").classList.toggle("on",v==="d");$("hM").classList.toggle("on",v==="m");saveCfg()}
+$("hD").onclick=()=>{setHand("d");refresh()};$("hM").onclick=()=>{setHand("m");refresh()};setHand(hand);
 const clampRep=()=>{let n=Math.floor(+$("rep").value);if(!(n>=1))n=1;if(n>4)n=4;$("rep").value=n};
 $("rep").addEventListener("input",()=>{const v=$("rep").value;if(v!==""&&+v>4)$("rep").value=4;});
 $("rep").addEventListener("change",()=>{clampRep();check();saveCfg()});clampRep();["gs","ge"].forEach(i=>$(i).onchange=saveCfg);
-$("all").onclick=()=>{moves.forEach(m=>sel.add(m.id));saveSel();refresh()};
+$("all").onclick=()=>{moves.filter(selOK).forEach(m=>sel.add(m.id));saveSel();refresh()};
 $("none").onclick=()=>{sel.clear();saveSel();refresh()};
 $("addBtn").onclick=()=>{const v=$("newName").value.trim();if(!v)return;const m={id:uid(),n:v,f:$("newF").value,t:$("newT").value,d:$("newD").value};moves.push(m);sel.add(m.id);if(m.f)open.add(m.f);openSub.add((m.f||"")+"|"+(m.t||""));$("newName").value="";saveMoves();saveSel();render()};
 $("reset").onclick=()=>{if(!confirm("RESET: tutti i valori e l'elenco delle tecniche tornano a quelli iniziali. Le tecniche aggiunte o modificate andranno perse. Continuare?"))return;
  const D={dur:10,mn:2.5,mx:3.2,dia:6,rep:2,rate:1};FIELDS.forEach(f=>$(f).value=D[f]);$("dz").checked=false;
- cfgG={gs:"",ge:""};moves=clone(DEFAULT);sel.clear();open.clear();openSub.clear();$("addBox").open=false;saveMoves();saveSel();render();$("gs").value="";$("ge").value="";saveCfg()};
+ cfgG={gs:"",ge:""};setHand("d");moves=clone(DEFAULT);sel.clear();open.clear();openSub.clear();$("addBox").open=false;saveMoves();saveSel();render();$("gs").value="";$("ge").value="";saveCfg()};
 
 function pickVoice(){const v=speechSynthesis.getVoices().filter(x=>x.lang&&x.lang.toLowerCase().startsWith("it"));voice=v.find(x=>/premium|enhanced|migliorata/i.test(x.name))||v[0]||null}
 if("speechSynthesis"in window){pickVoice();speechSynthesis.onvoiceschanged=pickVoice}
@@ -187,9 +223,9 @@ function guardIdx(name,pool){const all=moves.map((m,i)=>i).filter(i=>moves[i].t=
  let g=all.filter(i=>pool.includes(i));
  if(!g.length){const fs=new Set(pool.map(i=>moves[i].f));g=all.filter(i=>fs.has(moves[i].f))}
  if(!g.length)g=all;return g[Math.floor(Math.random()*g.length)]}
-function okG(i){const v=DIRS[moves[i].d]||[0,0],x=run.pos[0]+v[0],y=run.pos[1]+v[1],R=run.c.dia/2;return x*x+y*y<=R*R+1e-9}
+function okG(i){return pathOK(i,run.pos)}
 function guardNow(pref){if(pref>=0&&okG(pref))return pref;const all=moves.map((m,i)=>i).filter(i=>moves[i].t==="guardia"&&okG(i)),ip=all.filter(i=>run.pool.includes(i)),g=ip.length?ip:all;return g.length?rnd1(g):-1}
-function gp(i){const v=DIRS[moves[i].d]||[0,0];return{i,nx:run.pos[0]+v[0],ny:run.pos[1]+v[1]}}
+function gp(i){const e=endPos(i,run.pos);return{i,nx:e[0],ny:e[1]}}
 let actx=null;
 function audioInit(){try{const AC=window.AudioContext||window.webkitAudioContext;if(AC&&!actx)actx=new AC();if(actx&&actx.state==="suspended")actx.resume()}catch(e){}}
 function beep(dur,freq){try{if(!actx)return;const o=actx.createOscillator(),g=actx.createGain(),t=actx.currentTime;o.type="sine";o.frequency.value=freq||880;g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(.5,t+.01);g.gain.setValueAtTime(.5,t+dur-.02);g.gain.linearRampToValueAtTime(0,t+dur);o.connect(g);g.connect(actx.destination);o.start(t);o.stop(t+dur+.02)}catch(e){}}
@@ -201,11 +237,11 @@ const PHRASES=[
  {t:"Fate pena e misericordia!"},
  {t:"Raga! Fate cagare!"},{t:"Raga! Siete inguardabili!"},{t:"Non vi si può guardare!"}];
 const ORD=/^(prima|seconda|terza|quarta|quinta|sesta|settima|ottava|nona|decima)$/i;
-function fem(m){if(m.g)return m.g==="f";const w=m.n.trim().split(/\s+/),a=w[0].toLowerCase(),l=w[w.length-1];return ORD.test(a)||a==="guardia"||(/a$/i.test(l)&&!/^f\d$/i.test(l))}
-const spokenName=(m,nm)=>{nm=nm||m.n;return run.dup.has(nm.toLowerCase())&&m.f?nm+" di Forma "+m.f.replace(/\D/g,""):nm};
+function fem(m){if(m.g)return m.g==="f";const w=m.n.trim().split(/\s+/),a=w[0].toLowerCase(),l=w[w.length-1];return ORD.test(a)||a==="guardia"||a==="legatura"||a==="la"||(/a$/i.test(l)&&!/^f\d$/i.test(l))}
+const spokenName=(m,nm)=>{nm=nm||m.n;return run.dup.has(nm.toLowerCase())&&/^F\d$/.test(m.f||"")?nm+" di Forma "+m.f.replace(/\D/g,""):nm};
 function dzPhrase(){
- const R=run.c.dia/2,m=moves[run.last],v=DIRS[m.d]||[0,0],nx=run.pos[0]+v[0],ny=run.pos[1]+v[1];
- const ctx={canRepeat:nx*nx+ny*ny<=R*R+1e-9,name:spokenName(m),fem:fem(m)};
+ const m=moves[run.last];
+ const ctx={canRepeat:pathOK(run.last,run.pos),name:spokenName(m),fem:fem(m)};
  let p=null;for(let k=0;k<40&&!p;k++){const c=PHRASES[Math.floor(Math.random()*PHRASES.length)];if((!c.ok||c.ok(ctx))&&(c!==run.lastPhrase||PHRASES.length<2))p=c}
  if(!p)p=PHRASES.find(c=>!c.ok)||PHRASES[0];
  run.lastPhrase=p;run.said++;run.next=Date.now()+rndT(run.c.mn,run.c.mx)*1000;
@@ -252,16 +288,23 @@ function start(){
  $("setup").style.display="none";$("train").style.display="block";$("pause").textContent="Pausa";$("pause").style.display="";$("stop").textContent="Stop";
  $("name").textContent="Prendere posizione";$("arrow").textContent="";$("dirtxt").textContent="";
  audioInit();say("Prendere posizione!");lock();draw();timer=setInterval(tick,200)}
+function legTarget(){
+ const R=run.c.dia/2,r=Math.floor(R);let best=null,bd=1e9;
+ run.pool.filter(i=>moves[i].seq&&!run.seen.has(i)&&!pathOK(i,run.pos)).forEach(i=>{
+  for(let x=-r;x<=r;x++)for(let y=-r;y<=r;y++){if(x*x+y*y>R*R||!pathOK(i,[x,y]))continue;const dd=Math.hypot(x-run.pos[0],y-run.pos[1]);if(dd<bd){bd=dd;best=[x,y]}}});
+ return best}
 function pick(){
- const R=run.c.dia/2,R2=R*R,[x,y]=run.pos,d0=Math.hypot(x,y),cand=[];
- run.pool.forEach(i=>{const v=DIRS[moves[i].d]||[0,0],nx=x+v[0],ny=y+v[1];if(nx*nx+ny*ny<=R2+1e-9)cand.push({i,nx,ny,dd:Math.hypot(nx,ny)})});
- const mov=i=>{const v=DIRS[moves[i].d]||[0,0];return v[0]||v[1]};
+ const cand=[];
+ run.pool.forEach(i=>{if(!pathOK(i,run.pos))return;const e=endPos(i,run.pos);cand.push({i,nx:e[0],ny:e[1]})});
+ const mov=i=>!moves[i].seq&&stepsOf(i).some(v=>v[0]||v[1]);
  if(run.pool.some(i=>mov(i))&&!cand.some(c=>mov(c.i)))return null;
+ const T=legTarget()||[0,0],d0=Math.hypot(run.pos[0]-T[0],run.pos[1]-T[1]),[x,y]=run.pos,R2=(run.c.dia/2)**2;
+ cand.forEach(c=>c.dd=Math.hypot(c.nx-T[0],c.ny-T[1]));
  run.pickN++;
  let base=cand.filter(c=>c.i!==run.last);if(!base.length)base=cand;
- const room=c=>{const v=DIRS[moves[c.i].d]||[0,0];let k=1;while(k<run.c.rep){const nx=x+v[0]*(k+1),ny=y+v[1]*(k+1);if(nx*nx+ny*ny<=R2+1e-9)k++;else break}return k};
+ const room=c=>{const v=vecOf(moves[c.i]);let k=1;while(k<run.c.rep){const nx=x+v[0]*(k+1),ny=y+v[1]*(k+1);if(nx*nx+ny*ny<=R2+1e-9)k++;else break}return k};
  let rpt=run.repAt.has(run.pickN);
- if(rpt){const b2=base.filter(c=>moves[c.i].t!=="guardia"&&room(c)>=2);if(b2.length)base=b2;else{rpt=false;run.repAt.add(run.pickN+1)}}
+ if(rpt){const b2=base.filter(c=>moves[c.i].t!=="guardia"&&!moves[c.i].seq&&moves[c.i].cnt===undefined&&room(c)>=2);if(b2.length)base=b2;else{rpt=false;run.repAt.add(run.pickN+1)}}
  const unseen=base.filter(c=>!run.seen.has(c.i)),left=run.pool.filter(i=>!run.seen.has(i)).length;
  const slots=Math.max(0,(run.endAt-Date.now())/(((run.c.mn+run.c.mx)/2)*1000));
  const pool=unseen.length&&left>=slots?unseen:base;
@@ -271,13 +314,14 @@ function pick(){
  if(rpt){const mk=room(p),n=2+Math.floor(Math.random()*(mk-1));run.rp={i:p.i,left:n-1}}
  return p}
 function go(p){
- const m=moves[p.i],v=DIRS[m.d]||DIRS.nessuno;
+ const m=moves[p.i],dv=dirOf(m),v=DIRS[dv]||DIRS.nessuno;
  run.pos=[p.nx,p.ny];if(run.pool.includes(p.i))run.seen.add(p.i);run.last=p.i;run.count++;run.tCount++;
- run.next=Date.now()+rndT(run.c.mn,run.c.mx)*1000;
+ let gap=rndT(run.c.mn,run.c.mx)*1000;if(m.seq)gap+=stepsOf(p.i).length*2000;if(m.cnt!==undefined)gap+=m.cnt*2000;
+ run.next=Date.now()+gap;
  const sp=spokenName(m,rnd1([m.n,...(m.al||[])]));
- $("name").textContent=sp;$("arrow").textContent=v[2];
- $("dirtxt").textContent=[m.f?"Forma "+m.f.replace(/\D/g,""):"",m.t,m.d==="nessuno"?"nessun passo":"passo: "+m.d].filter(Boolean).join(" · ");
- say(sp+"!");draw()}
+ $("name").textContent=sp;$("arrow").textContent=(m.seq||m.cnt!==undefined)?DIRS.nessuno[2]:v[2];
+ $("dirtxt").textContent=[formLbl(m),m.t,m.seq?"legatura di "+m.seq.length+" tecniche":m.cnt!==undefined?m.cnt+" ripetizioni":dv==="nessuno"?"nessun passo":"passo: "+dv].filter(Boolean).join(" · ");
+ say(m.cnt!==undefined?m.cnt+" "+m.n.toLowerCase()+"!":sp+"!");draw()}
 function tick(){
  if(!run||run.paused)return;
  const now=Date.now(),rem=run.endAt-now;
